@@ -4,6 +4,9 @@ import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Leads from './pages/Leads'
+import Pipeline from './pages/Pipeline'
+import AdminUsers from './pages/AdminUsers'
 import { api } from './services/mockApi';
 
 const App = () => {
@@ -43,7 +46,11 @@ const App = () => {
           <main className="flex-1 overflow-auto bg-slate-50/50">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/leads" element={<Leads />} />
+              <Route path="/pipeline" element={<Pipeline/>} />
+              <Route path="/admin/users" element={<AdminUsers/>} />
               <Route path="*" element={<Navigate to="/" replace />} />
+              
             </Routes>
           </main>
         </div>
