@@ -18,6 +18,18 @@ const SEED_DEALS = [
   { id: 'd3', leadId: 'l3', title: 'Yearly Paper Supply', value: 25000, currency: 'INR', stage: 'Won', expectedCloseDate: '2023-11-22', ownerId: 'u2', createdAt: '2023-11-20T15:00:00.000Z' },
 ];
 
+// Seed for FollowUps
+const SEED_FOLLOWUPS = [
+  { id: 'f1', leadId: 'l1', leadName: 'John Doe', type: 'Call', status: 'Pending', scheduledAt: new Date(Date.now() + 86400000).toISOString(), notes: 'Discuss pricing', assignedTo: 'u3' },
+  { id: 'f2', leadId: 'l2', leadName: 'Sarah Connor', type: 'Meeting', status: 'Overdue', scheduledAt: new Date(Date.now() - 86400000).toISOString(), notes: 'Initial demo', assignedTo: 'u3' },
+];
+
+// Seed for Notifications
+const SEED_NOTIFICATIONS = [
+  { id: 'n1', message: 'You have an overdue follow-up with Sarah Connor', isRead: false, createdAt: new Date().toISOString() },
+  { id: 'n2', message: 'New lead assigned: John Doe', isRead: true, createdAt: new Date(Date.now() - 3600000).toISOString() },
+];
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper to manage localStorage
@@ -149,6 +161,48 @@ class MockApiService {
     const deals = db.get('deals', SEED_DEALS);
     const updatedDeals = deals.map(d => d.id === dealId ? { ...d, stage } : d);
     db.set('deals', updatedDeals);
+  }
+
+  // --- Follow Ups ---
+  async getFollowUps() {
+    await delay(400);
+    return db.get('followups', SEED_FOLLOWUPS);
+  }
+
+  async addFollowUp(data) {
+    await delay(400);
+    const list = db.get('followups', SEED_FOLLOWUPS);
+    const leads = db.get('leads', SEED_LEADS);
+    const lead = leads.find(l => l.id === data.leadId);
+    
+    const newItem = {
+      ...data,
+      id: `f${Date.now()}`,
+      status: 'Pending',
+      leadName: lead ? lead.name : 'Unknown',
+      createdAt: new Date().toISOString()
+    };
+    db.set('followups', [newItem, ...list]);
+    return newItem;
+  }
+
+  async completeFollowUp(id) {
+    await delay(300);
+    const list = db.get('followups', SEED_FOLLOWUPS);
+    const updated = list.map(f => f.id === id ? { ...f, status: 'Completed' } : f);
+    db.set('followups', updated);
+  }
+
+  // --- Notifications ---
+  async getNotifications() {
+    await delay(200);
+    return db.get('notifications', SEED_NOTIFICATIONS);
+  }
+
+  async markNotificationRead(id) {
+    const list = db.get('notifications', SEED_NOTIFICATIONS);
+    const updated = list.map(n => n.id === id ? { ...n, isRead: true } : n);
+    db.set('notifications', updated);
   }
 
   // --- Stats ---

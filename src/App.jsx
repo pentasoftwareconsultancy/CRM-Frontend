@@ -8,6 +8,7 @@ import Leads from './pages/Leads'
 import Pipeline from './pages/Pipeline'
 import AdminUsers from './pages/AdminUsers'
 import { api } from './services/mockApi';
+import FollowUps from './pages/FollowUps';
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -49,6 +50,7 @@ const App = () => {
               <Route path="/leads" element={<Leads />} />
               <Route path="/pipeline" element={<Pipeline/>} />
               <Route path="/admin/users" element={<AdminUsers/>} />
+              <Route path="/followups" element={<FollowUps/>} />
               <Route path="*" element={<Navigate to="/" replace />} />
               
             </Routes>

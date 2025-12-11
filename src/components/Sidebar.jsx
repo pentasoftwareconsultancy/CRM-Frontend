@@ -1,13 +1,13 @@
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Trello, BarChart3, Settings, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, Trello, BarChart3, Settings, LogOut, Shield, CalendarClock } from 'lucide-react';
 
 const Sidebar = ({ onLogout, userRole }) => {
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard },
     { name: 'Leads', to: '/leads', icon: Users },
     { name: 'Pipeline', to: '/pipeline', icon: Trello },
+    { name: 'Follow Ups', to: '/followups', icon: CalendarClock },
     { name: 'Reports', to: '/reports', icon: BarChart3 },
   ];
 
