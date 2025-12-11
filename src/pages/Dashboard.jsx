@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DollarSign, Users, TrendingUp, Target, ArrowUpRight, ArrowDownRight } from 'lucide-react';
@@ -9,8 +10,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const data = await api.getDashboardStats();
-      setStats(data);
+      try {
+        const data = await api.getDashboardStats();
+        setStats(data);
+      } catch (e) {
+        console.error(e);
+      }
       setLoading(false);
     };
     fetchStats();
@@ -48,7 +53,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard 
           title="Total Revenue" 
-          value={`$${stats?.totalRevenue.toLocaleString()}`} 
+          value={`$${(stats?.totalRevenue || 0).toLocaleString()}`} 
           icon={DollarSign} 
           trend="+12.5%" 
           trendUp={true} 
@@ -56,7 +61,7 @@ const Dashboard = () => {
         />
         <KpiCard 
           title="Active Leads" 
-          value={stats?.activeLeads} 
+          value={stats?.activeLeads || 0} 
           icon={Users} 
           trend="+4.2%" 
           trendUp={true} 
@@ -64,7 +69,7 @@ const Dashboard = () => {
         />
         <KpiCard 
           title="Pipeline Value" 
-          value={`$${stats?.pipelineValue.toLocaleString()}`} 
+          value={`$${(stats?.pipelineValue || 0).toLocaleString()}`} 
           icon={TrendingUp} 
           trend="-2.1%" 
           trendUp={false} 
@@ -72,7 +77,7 @@ const Dashboard = () => {
         />
         <KpiCard 
           title="Win Rate" 
-          value={`${stats?.winRate}%`} 
+          value={`${stats?.winRate || 0}%`} 
           icon={Target} 
           trend="+1.5%" 
           trendUp={true} 

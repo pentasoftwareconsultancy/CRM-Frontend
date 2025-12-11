@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Check, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bell, Search, Check, X, User } from 'lucide-react';
 import { api } from '../services/mockApi';
 
 const NotificationPanel = ({ isOpen, onClose }) => {
@@ -14,14 +16,18 @@ const NotificationPanel = ({ isOpen, onClose }) => {
 
   const loadNotifications = async () => {
     setLoading(true);
-    const data = await api.getNotifications();
-    setNotifications(data);
+    try {
+      const data = await api.getNotifications();
+      setNotifications(data);
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
   };
 
   const handleMarkAsRead = async (id) => {
     await api.markNotificationRead(id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
   };
 
   if (!isOpen) return null;
@@ -43,7 +49,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
           <div className="divide-y divide-slate-50">
             {notifications.map((note) => (
               <div 
-                key={note.id} 
+                key={note._id} 
                 className={`p-4 hover:bg-slate-50 transition-colors ${!note.isRead ? 'bg-blue-50/50' : ''}`}
               >
                 <div className="flex gap-3">
@@ -58,7 +64,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                   </div>
                   {!note.isRead && (
                     <button 
-                      onClick={() => handleMarkAsRead(note.id)}
+                      onClick={() => handleMarkAsRead(note._id)}
                       className="text-blue-500 hover:bg-blue-100 p-1 rounded transition-colors self-start"
                       title="Mark as read"
                     >
@@ -70,9 +76,6 @@ const NotificationPanel = ({ isOpen, onClose }) => {
             ))}
           </div>
         )}
-      </div>
-      <div className="p-3 border-t border-slate-100 text-center bg-slate-50">
-        <button className="text-xs font-medium text-primary hover:underline">View All Notifications</button>
       </div>
     </div>
   );
@@ -118,9 +121,9 @@ const TopBar = ({ user }) => {
           <NotificationPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
         </div>
         
-        <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
+        <Link to="/profile" className="flex items-center gap-3 pl-6 border-l border-slate-200 group">
           <div className="text-right hidden md:block">
-            <p className="text-sm font-semibold text-slate-800">{user?.name || 'User'}</p>
+            <p className="text-sm font-semibold text-slate-800 group-hover:text-primary transition-colors">{user?.name || 'User'}</p>
             <div className="flex items-center justify-end gap-1">
               {user?.role === 'admin' && (
                 <span className="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">Admin</span>
@@ -130,7 +133,7 @@ const TopBar = ({ user }) => {
               )}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm group-hover:border-primary transition-colors">
             {user?.avatar ? (
               <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
             ) : (
@@ -139,7 +142,7 @@ const TopBar = ({ user }) => {
               </div>
             )}
           </div>
-        </div>
+        </Link>
       </div>
     </div>
   );

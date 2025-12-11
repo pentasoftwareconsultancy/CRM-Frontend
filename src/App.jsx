@@ -10,6 +10,7 @@ import FollowUps from './pages/FollowUps';
 import Login from './pages/Login';
 import AdminUsers from './pages/AdminUsers';
 import Reports from './pages/Reports';
+import Profile from './pages/Profile';
 import { api } from './services/mockApi';
 
 const ProtectedRoute = ({ children, allowedRoles, user }) => {
@@ -26,8 +27,12 @@ const App = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const currentUser = await api.getCurrentUser();
-      setUser(currentUser);
+      try {
+        const currentUser = await api.getCurrentUser();
+        setUser(currentUser);
+      } catch (e) {
+        console.log("Not logged in");
+      }
       setLoading(false);
     };
     checkAuth();
@@ -61,6 +66,7 @@ const App = () => {
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/followups" element={<FollowUps />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/profile" element={<Profile currentUser={user} />} />
               
               {/* Admin Routes */}
               <Route 
