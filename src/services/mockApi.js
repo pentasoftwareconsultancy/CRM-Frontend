@@ -205,7 +205,7 @@ class MockApiService {
     db.set('notifications', updated);
   }
 
-  // --- Stats ---
+  // --- Stats & Reports ---
   async getDashboardStats() {
     await delay(600);
     const deals = db.get('deals', SEED_DEALS);
@@ -222,6 +222,54 @@ class MockApiService {
       activeLeads,
       pipelineValue,
       winRate: Math.round(winRate)
+    };
+  }
+
+  async getReportData() {
+    await delay(800);
+    const leads = db.get('leads', SEED_LEADS);
+    const deals = db.get('deals', SEED_DEALS);
+    const users = db.get('users', SEED_USERS);
+
+    // 1. Pipeline Summary
+    const pipelineData = [
+      { name: 'New', value: deals.filter(d => d.stage === 'New').length },
+      { name: 'Qualified', value: deals.filter(d => d.stage === 'Qualified').length },
+      { name: 'Proposal', value: deals.filter(d => d.stage === 'Proposal Sent').length },
+      { name: 'Won', value: deals.filter(d => d.stage === 'Won').length },
+      { name: 'Lost', value: deals.filter(d => d.stage === 'Lost').length },
+    ];
+
+    // 2. Team Performance (Assigned Leads & Won Deals)
+    const teamPerformance = users.map(user => {
+      const assignedLeads = leads.filter(l => l.assignedTo === user.id).length;
+      const wonDeals = deals.filter(d => d.ownerId === user.id && d.stage === 'Won').length;
+      const totalRevenue = deals.filter(d => d.ownerId === user.id && d.stage === 'Won').reduce((sum, d) => sum + d.value, 0);
+      return {
+        name: user.name,
+        assignedLeads,
+        wonDeals,
+        totalRevenue
+      };
+    });
+
+    // 3. Conversion Rate (by Source)
+    const sources = [...new Set(leads.map(l => l.source))];
+    const conversionData = sources.map(source => {
+      const total = leads.filter(l => l.source === source).length;
+      const converted = leads.filter(l => l.source === source && (l.status === 'Converted' || l.status === 'Qualified')).length;
+      return {
+        name: source,
+        total,
+        converted,
+        rate: total > 0 ? Math.round((converted / total) * 100) : 0
+      };
+    });
+
+    return {
+      pipelineData,
+      teamPerformance,
+      conversionData
     };
   }
 }

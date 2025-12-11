@@ -1,14 +1,24 @@
+
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import Leads from './pages/Leads'
-import Pipeline from './pages/Pipeline'
-import AdminUsers from './pages/AdminUsers'
-import { api } from './services/mockApi';
+import Leads from './pages/Leads';
+import Pipeline from './pages/Pipeline';
 import FollowUps from './pages/FollowUps';
+import Login from './pages/Login';
+import AdminUsers from './pages/AdminUsers';
+import Reports from './pages/Reports';
+import { api } from './services/mockApi';
+
+const ProtectedRoute = ({ children, allowedRoles, user }) => {
+  if (!user) return <Navigate to="/" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -48,11 +58,21 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/leads" element={<Leads />} />
-              <Route path="/pipeline" element={<Pipeline/>} />
-              <Route path="/admin/users" element={<AdminUsers/>} />
-              <Route path="/followups" element={<FollowUps/>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/pipeline" element={<Pipeline />} />
+              <Route path="/followups" element={<FollowUps />} />
+              <Route path="/reports" element={<Reports />} />
               
+              {/* Admin Routes */}
+              <Route 
+                path="/admin/users" 
+                element={
+                  <ProtectedRoute user={user} allowedRoles={['admin']}>
+                    <AdminUsers />
+                  </ProtectedRoute>
+                } 
+              />
+
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
         </div>
