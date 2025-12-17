@@ -68,6 +68,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                       className="text-blue-500 hover:bg-blue-100 p-1 rounded transition-colors self-start"
                       title="Mark as read"
                     >
+                      Mark as read
                       <Check size={14} />
                     </button>
                   )}

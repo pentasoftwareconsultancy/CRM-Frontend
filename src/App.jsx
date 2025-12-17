@@ -5,6 +5,8 @@ import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
+import Leads2 from './pages/Leads2';
+import LeadDetail from './pages/LeadDetail';
 import Pipeline from './pages/Pipeline';
 import FollowUps from './pages/FollowUps';
 import Login from './pages/Login';
@@ -63,6 +65,8 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/leads" element={<Leads />} />
+              <Route path="/lead-detail" element={<LeadDetail/>} />
+              <Route path="/lead" element={<Leads2/>}/>
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/followups" element={<FollowUps />} />
               <Route path="/reports" element={<Reports />} />

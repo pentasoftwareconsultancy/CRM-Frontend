@@ -7,7 +7,7 @@ const SEED_USERS = [
 ];
 
 const SEED_LEADS = [
-  { id: 'l1', name: 'John Doe', company: 'ABC Pvt Ltd', email: 'john@abc.com', phone: '9000000000', source: 'Website', status: 'Qualified', assignedTo: 'u3', budget: 50000, city: 'Pune', description: 'Interested in CRM', createdAt: '2023-11-25T10:30:00.000Z', updatedAt: '2023-11-26T08:10:00.000Z' },
+  { id: 'l1', name: 'John Doe', company: 'ABCD Pvt Ltd', email: 'john@abc.com', phone: '9000000000', source: 'Website', status: 'Qualified', assignedTo: 'u3', budget: 50000, city: 'Pune', description: 'Interested in CRM', createdAt: '2023-11-25T10:30:00.000Z', updatedAt: '2023-11-26T08:10:00.000Z' },
   { id: 'l2', name: 'Sarah Connor', company: 'Cyberdyne', email: 'sarah@cyberdyne.com', phone: '9876543210', source: 'Referral', status: 'New', assignedTo: 'u3', budget: 120000, city: 'Mumbai', description: 'Needs AI integration', createdAt: '2023-11-28T09:00:00.000Z', updatedAt: '2023-11-28T09:00:00.000Z' },
   { id: 'l3', name: 'Michael Scott', company: 'Dunder Mifflin', email: 'mscott@dunder.com', phone: '555-1234', source: 'Cold Call', status: 'Contacted', assignedTo: 'u2', budget: 5000, city: 'Scranton', description: 'Paper supply chain', createdAt: '2023-11-20T14:00:00.000Z', updatedAt: '2023-11-22T10:00:00.000Z' },
 ];

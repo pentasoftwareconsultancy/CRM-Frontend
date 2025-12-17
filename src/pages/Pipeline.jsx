@@ -57,7 +57,7 @@ const Pipeline = () => {
           <h2 className="text-2xl font-bold text-slate-800">Sales Pipeline</h2>
           <p className="text-slate-500 text-sm">Drag and drop deals to move them through the funnel.</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium shadow-md shadow-blue-500/20 transition-all">
+        <button className="flex items-center gap-2 bg-primary hover:bg-blue-500 text-black px-4 py-2 rounded-lg font-medium shadow-md shadow-blue-500/20 transition-all">
           <Plus size={18} />
           New Deal
         </button>

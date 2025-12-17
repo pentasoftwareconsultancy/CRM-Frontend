@@ -20,7 +20,8 @@ const Leads = () => {
     source: 'Website',
     budget: '',
     assignedTo: '',
-    city: ''
+    city: '', 
+    description:''
   });
 
   const fetchData = async () => {
@@ -47,7 +48,7 @@ const Leads = () => {
     });
     setIsModalOpen(false);
     // Reset form
-    setFormData({ name: '', email: '', phone: '', company: '', status: 'New', source: 'Website', budget: '', assignedTo: '', city: '' });
+    setFormData({ name: '', email: '', phone: '', company: '', status: 'New', source: 'Website', budget: '', assignedTo: '', city: '', description:'' });
     fetchData();
   };
 
@@ -76,7 +77,7 @@ const Leads = () => {
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-black px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
+          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
         >
           <Plus size={18} />
           Add New Lead
@@ -238,9 +239,16 @@ const Leads = () => {
               </select>
             </div>
           </div>
+           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <textarea required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, description: e.target.value})} />
+            </div>
+          
+          </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
-            <button type="submit" className="px-4 py-2 bg-primary text-black font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">Create Lead</button>
+            <button type="submit" className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg shadow-md shadow-blue-500/20">Create Lead</button>
           </div>
         </form>
       </Modal>
