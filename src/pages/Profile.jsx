@@ -1,57 +1,74 @@
-
 import React, { useEffect, useState } from 'react';
-import { api } from '../services/mockApi';
-import { User, Shield, Mail, Key, Briefcase, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { authService } from '../services/api';
+import { useAuthStore } from '../store/authStore';
+import { User, Shield, Mail, Key, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
 
 const Profile = ({ currentUser }) => {
+  const { updateUser, logout } = useAuthStore();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: currentUser.name || '',
+    email: currentUser.email || '', // Email is disabled/read-only
     currentPassword: '',
     newPassword: ''
   });
   const [status, setStatus] = useState({ type: '', message: '' });
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (currentUser) {
-      setFormData(prev => ({ 
-        ...prev, 
-        name: currentUser.name || '', 
-        email: currentUser.email || '' 
-      }));
+  // --- Mutations ---
+
+  // 1. Change Password Mutation (1.2 POST /auth/change-password)
+  const passwordMutation = useMutation({
+    mutationFn: (data) => authService.changePassword(data),
+    onSuccess: () => {
+        setStatus({ type: 'success', message: 'Password updated successfully!' });
+        setFormData(prev => ({ ...prev, newPassword: '', currentPassword: '' }));
+    },
+    onError: (err) => {
+        setStatus({ type: 'error', message: err.response?.data?.message || 'Failed to change password.' });
     }
-  }, [currentUser]);
+  });
 
-  const handleSubmit = async (e) => {
+  // 2. Profile Update Mutation (Simulated for name/designation/phone if added)
+  // Note: We only simulate name update via Zustand for front-end responsiveness
+  const profileUpdateMutation = useMutation({
+    mutationFn: (data) => {
+        // Since we don't have a dedicated /profile/update endpoint, we use the user update one, 
+        // which requires Admin privileges for other users. We simulate the update locally for simplicity.
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                updateUser({ name: data.name });
+                resolve({ message: 'Profile name updated locally.' });
+            }, 500);
+        });
+    },
+    onSuccess: () => {
+        setStatus({ type: 'success', message: 'Profile details updated.' });
+    },
+    onError: (err) => {
+        setStatus({ type: 'error', message: 'Failed to update profile details.' });
+    }
+  });
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     setStatus({ type: '', message: '' });
-    setLoading(true);
-    
-    try {
-      await api.updateProfile({
-        name: formData.name,
-        password: formData.newPassword // Backend handles hashing
-      });
-      
-      setStatus({ type: 'success', message: 'Profile updated successfully' });
-      setFormData(prev => ({ ...prev, newPassword: '', currentPassword: '' }));
-      
-      // Ideally trigger a user reload in App.jsx here, or update local storage
-    } catch (err) {
-      setStatus({ type: 'error', message: err.message || 'Failed to update profile' });
-    } finally {
-      setLoading(false);
+
+    if (formData.newPassword) {
+        if (!formData.currentPassword) {
+            return setStatus({ type: 'error', message: 'Current password is required to set a new password.' });
+        }
+        passwordMutation.mutate({ 
+            currentPassword: formData.currentPassword, 
+            newPassword: formData.newPassword 
+        });
+    }
+
+    if (formData.name !== currentUser.name) {
+        profileUpdateMutation.mutate({ name: formData.name });
     }
   };
 
-  if (!currentUser) {
-    return (
-      <div className="p-8 flex justify-center items-center h-full">
-        <div className="text-slate-500">Loading Profile...</div>
-      </div>
-    );
-  }
+  const isLoading = passwordMutation.isPending || profileUpdateMutation.isPending;
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -63,7 +80,7 @@ const Profile = ({ currentUser }) => {
           {/* Profile Card */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center text-center">
             <div className="w-32 h-32 rounded-full bg-slate-100 mb-4 overflow-hidden border-4 border-slate-50 shadow-inner group relative">
-              <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
+              <img src={currentUser.avatar || `https://ui-avatars.com/api/?name=${currentUser.name.replace(' ', '+')}&background=random`} alt={currentUser.name} className="w-full h-full object-cover" />
             </div>
             <h3 className="text-xl font-bold text-slate-800">{currentUser.name}</h3>
             <p className="text-slate-500 mb-4">{currentUser.email}</p>
@@ -79,11 +96,10 @@ const Profile = ({ currentUser }) => {
             </div>
           </div>
 
-          {/* Role Specific Stats Card */}
-          {currentUser.role === 'sales' && (
-            <div className="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+          {/* Role Specific Stats Card (Simulated) */}
+          <div className="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
               <h4 className="font-semibold flex items-center gap-2 mb-4 opacity-90">
-                <TrendingUp size={18} /> Performance
+                <TrendingUp size={18} /> Performance (Simulated)
               </h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/10 p-3 rounded-lg backdrop-blur-sm">
@@ -96,16 +112,6 @@ const Profile = ({ currentUser }) => {
                 </div>
               </div>
             </div>
-          )}
-
-          {currentUser.role === 'admin' && (
-             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
-               <h4 className="font-semibold flex items-center gap-2 mb-2 opacity-90">
-                 <Shield size={18} /> Admin Access
-               </h4>
-               <p className="text-sm text-slate-300">You have full control over users, settings, and system configurations.</p>
-             </div>
-          )}
         </div>
 
         {/* Right Column: Edit Form */}
@@ -142,30 +148,41 @@ const Profile = ({ currentUser }) => {
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1 ml-1">Email cannot be changed directly.</p>
               </div>
             </div>
 
             <div className="pt-6">
               <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 pb-4 border-b border-slate-100">
                 <Key size={20} className="text-primary" />
-                Security
+                Security (1.2)
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
+                   <div className="relative">
+                    <Key size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input 
+                      type="password" 
+                      placeholder="Required for password change"
+                      value={formData.currentPassword}
+                      onChange={e => setFormData({...formData, currentPassword: e.target.value})}
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
+                   </div>
+                </div>
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
                    <div className="relative">
                     <Key size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input 
                       type="password" 
-                      placeholder="Min 6 characters"
+                      placeholder="New password (optional)"
                       value={formData.newPassword}
                       onChange={e => setFormData({...formData, newPassword: e.target.value})}
                       className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     />
                    </div>
-                   <p className="text-[10px] text-slate-400 mt-1 ml-1">Leave blank to keep current password.</p>
                 </div>
               </div>
             </div>
@@ -180,10 +197,10 @@ const Profile = ({ currentUser }) => {
             <div className="pt-4 flex justify-end">
               <button 
                 type="submit" 
-                disabled={loading}
+                disabled={isLoading}
                 className="bg-primary hover:bg-blue-600 text-white px-8 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-70 flex items-center gap-2"
               >
-                {loading ? 'Saving...' : 'Save Changes'}
+                {isLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
