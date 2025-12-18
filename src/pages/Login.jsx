@@ -1,10 +1,13 @@
+// src/pages/Login.jsx (UPDATED)
+
 import React, { useState } from 'react';
 import { LayoutDashboard } from 'lucide-react';
-import { api } from '../services/mockApi';
+import { useAuthStore } from '../store/authStore'; // Import Zustand store
 
-const Login = ({ onLogin }) => {
-  const [email, setEmail] = useState('alex@nexuscrm.com');
-  const [password, setPassword] = useState('password');
+const Login = () => {
+  const { login } = useAuthStore(); // Get login action from store
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -14,11 +17,11 @@ const Login = ({ onLogin }) => {
     setError('');
 
     try {
-      // Simulate API login
-      const user = await api.login(email);
-      onLogin(user);
+      await login(email, password); // Use Zustand login action
     } catch (err) {
-      setError('Invalid credentials. Try alex@nexuscrm.com');
+      // API error handling
+      const errorMessage = err.response?.data?.message || 'Login failed. Check credentials and server status.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -26,6 +29,7 @@ const Login = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      {/* ... (rest of the Login component UI remains the same) ... */}
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
         <div className="flex flex-col items-center mb-8">
           <div className="bg-primary/10 p-3 rounded-xl mb-4 text-primary">
@@ -65,17 +69,11 @@ const Login = ({ onLogin }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
-
-        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-          <p className="text-xs text-slate-400">
-            For demo purposes, use <span className="font-mono text-slate-600">alex@nexuscrm.com</span> (Admin) or <span className="font-mono text-slate-600">ankit@nexuscrm.com</span> (Sales).
-          </p>
-        </div>
       </div>
     </div>
   );
