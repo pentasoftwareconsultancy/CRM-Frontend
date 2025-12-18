@@ -1,14 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Trello, BarChart3, Settings, LogOut, Shield, CalendarClock } from 'lucide-react';
+import { LayoutDashboard, Users, Trello, BarChart3, Settings, LogOut, Shield, CalendarClock, DollarSign } from 'lucide-react';
 
 const Sidebar = ({ onLogout, userRole }) => {
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard },
     { name: 'Leads', to: '/leads', icon: Users },
-    { name: 'Lead', to: '/lead', icon: Users },
     { name: 'Pipeline', to: '/pipeline', icon: Trello },
     { name: 'Follow Ups', to: '/followups', icon: CalendarClock },
+    { name: 'Customers', to: '/customers', icon: DollarSign },
     { name: 'Reports', to: '/reports', icon: BarChart3 },
   ];
 
@@ -31,10 +31,9 @@ const Sidebar = ({ onLogout, userRole }) => {
             key={item.name}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                isActive
-                  ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
+                ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`
             }
           >

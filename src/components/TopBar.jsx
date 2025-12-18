@@ -1,47 +1,83 @@
+// src/components/TopBar.jsx (UPDATED with React Query)
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Search, Check, X, User } from 'lucide-react';
-import { api } from '../services/mockApi';
+import { notificationService } from '../services/api'; // Assuming you add notificationService to api.js
+
+// --- 3.8 Notification Service Implementation ---
+// NOTE: We need to add notificationService to src/services/api.js first.
+
+// Add this to src/services/api.js (if not already done):
+/*
+// --- Notification Service (9.0) ---
+export const notificationService = {
+  getNotifications: async () => {
+    const res = await apiService.get('/notifications'); // 9.1 GET /notifications
+    return res.data.map(n => ({ ...n, id: n._id }));
+  },
+  markNotificationRead: async (id) => {
+    const res = await apiService.patch(`/notifications/${id}/read`); // 9.2 PATCH /notifications/:id/read
+    return res.data;
+  },
+};
+*/
 
 const NotificationPanel = ({ isOpen, onClose }) => {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  
+  // Fetch Notifications (9.1 GET /notifications)
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: notificationService.getNotifications,
+    // Only fetch if the panel is open
+    enabled: isOpen,
+    placeholderData: [],
+  });
 
-  useEffect(() => {
-    if (isOpen) {
-      loadNotifications();
-    }
-  }, [isOpen]);
+  // Mutation for Mark as Read (9.2 PATCH /notifications/:id/read)
+  const markReadMutation = useMutation({
+    mutationFn: (id) => notificationService.markNotificationRead(id),
+    onMutate: async (id) => {
+        // Optimistic Update: Mark notification as read immediately in the cache
+        await queryClient.cancelQueries(['notifications']);
+        const previousNotifications = queryClient.getQueryData(['notifications']);
 
-  const loadNotifications = async () => {
-    setLoading(true);
-    try {
-      const data = await api.getNotifications();
-      setNotifications(data);
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
+        queryClient.setQueryData(['notifications'], (old) => 
+            old ? old.map(n => (n.id === id ? { ...n, isRead: true } : n)) : []
+        );
+        return { previousNotifications };
+    },
+    onError: (err, id, context) => {
+        // Rollback on failure
+        queryClient.setQueryData(['notifications'], context.previousNotifications);
+        console.error("Failed to mark notification as read", err);
+    },
+    onSettled: () => {
+        // Ensure the list is fresh after mutation attempt
+        queryClient.invalidateQueries(['notifications']);
+    },
+  });
 
-  const handleMarkAsRead = async (id) => {
-    await api.markNotificationRead(id);
-    setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+  const handleMarkAsRead = (id) => {
+    markReadMutation.mutate(id);
   };
 
   if (!isOpen) return null;
 
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
   return (
     <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50">
       <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-        <h3 className="font-semibold text-slate-800">Notifications</h3>
+        <h3 className="font-semibold text-slate-800">Notifications ({unreadCount} New)</h3>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
           <X size={16} />
         </button>
       </div>
       <div className="max-h-96 overflow-y-auto">
-        {loading ? (
+        {isLoading ? (
           <div className="p-6 text-center text-slate-400 text-sm">Loading...</div>
         ) : notifications.length === 0 ? (
           <div className="p-6 text-center text-slate-400 text-sm">No new notifications</div>
@@ -49,7 +85,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
           <div className="divide-y divide-slate-50">
             {notifications.map((note) => (
               <div 
-                key={note._id} 
+                key={note.id} // Use 'id' from normalized API response
                 className={`p-4 hover:bg-slate-50 transition-colors ${!note.isRead ? 'bg-blue-50/50' : ''}`}
               >
                 <div className="flex gap-3">
@@ -64,11 +100,11 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                   </div>
                   {!note.isRead && (
                     <button 
-                      onClick={() => handleMarkAsRead(note._id)}
+                      onClick={() => handleMarkAsRead(note.id)}
                       className="text-blue-500 hover:bg-blue-100 p-1 rounded transition-colors self-start"
                       title="Mark as read"
+                      disabled={markReadMutation.isPending}
                     >
-                      Mark as read
                       <Check size={14} />
                     </button>
                   )}
@@ -85,6 +121,16 @@ const NotificationPanel = ({ isOpen, onClose }) => {
 const TopBar = ({ user }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef(null);
+  
+  // To update the red dot count when fetching. 
+  // We fetch a simplified, disabled version of the notifications query globally
+  const { data: globalNotifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: notificationService.getNotifications,
+    enabled: false, // Don't run this query on mount, only when panel opens
+  });
+  const unreadCount = globalNotifications.filter(n => !n.isRead).length;
+
 
   // Close when clicking outside
   useEffect(() => {
@@ -117,7 +163,9 @@ const TopBar = ({ user }) => {
             className={`relative p-2 rounded-lg transition-colors ${showNotifications ? 'bg-slate-100 text-slate-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
           >
             <Bell size={20} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+            {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+            )}
           </button>
           <NotificationPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
         </div>
