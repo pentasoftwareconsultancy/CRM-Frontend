@@ -1,46 +1,45 @@
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { reportService, leadService } from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DollarSign, Users, TrendingUp, Target, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { api } from '../services/mockApi';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Fetch Dashboard Stats (8.1 GET /reports/overview)
+  const { data: stats, isLoading: loadingStats } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: reportService.getDashboardStats,
+  });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await api.getDashboardStats();
-        setStats(data);
-      } catch (e) {
-        console.error(e);
-      }
-      setLoading(false);
-    };
-    fetchStats();
-  }, []);
+  // Fetch Leads for Source Breakdown (Simulated)
+  const { data: leads = [], isLoading: loadingLeads } = useQuery({
+    queryKey: ['leads'],
+    queryFn: () => leadService.getLeads().then(data => data.data),
+    select: (data) => data.map(l => l.source),
+  });
 
+  // --- Chart Data Calculation ---
+  const sourceCounts = leads.reduce((acc, source) => {
+    acc[source] = (acc[source] || 0) + 1;
+    return acc;
+  }, {});
+
+  const sourceData = Object.entries(sourceCounts).map(([name, value]) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    value,
+  }));
+  
+  // Dummy chart data (replace with time-series reports when implemented)
   const performanceData = [
     { name: 'Mon', sales: 4000, leads: 24 },
     { name: 'Tue', sales: 3000, leads: 13 },
     { name: 'Wed', sales: 2000, leads: 38 },
     { name: 'Thu', sales: 2780, leads: 39 },
-    { name: 'Fri', sales: 1890, leads: 48 },
-    { name: 'Sat', sales: 2390, leads: 38 },
-    { name: 'Sun', sales: 3490, leads: 43 },
-  ];
-
-  const sourceData = [
-    { name: 'Website', value: 400 },
-    { name: 'Referral', value: 300 },
-    { name: 'LinkedIn', value: 300 },
-    { name: 'Cold Call', value: 200 },
   ];
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-  if (loading) return <div className="p-8 flex justify-center text-slate-500">Loading Dashboard...</div>;
+  if (loadingStats || loadingLeads) return <div className="p-8 flex justify-center text-slate-500">Loading Dashboard...</div>;
 
   return (
     <div className="p-8 space-y-8">
@@ -49,37 +48,37 @@ const Dashboard = () => {
         <p className="text-slate-500">Welcome back, here's what's happening today.</p>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Using real data from 8.1) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard 
-          title="Total Revenue" 
-          value={`$${(stats?.totalRevenue || 0).toLocaleString()}`} 
+          title="Total Won Value" 
+          value={`₹${(stats?.totalRevenue || 0).toLocaleString()}`} 
           icon={DollarSign} 
-          trend="+12.5%" 
+          trend="N/A" 
           trendUp={true} 
           color="bg-blue-500"
         />
         <KpiCard 
-          title="Active Leads" 
+          title="Total Leads" 
           value={stats?.activeLeads || 0} 
           icon={Users} 
-          trend="+4.2%" 
+          trend="N/A" 
           trendUp={true} 
           color="bg-emerald-500"
         />
         <KpiCard 
           title="Pipeline Value" 
-          value={`$${(stats?.pipelineValue || 0).toLocaleString()}`} 
+          value={`₹${(stats?.pipelineValue || 0).toLocaleString()}`} 
           icon={TrendingUp} 
-          trend="-2.1%" 
+          trend="N/A" 
           trendUp={false} 
           color="bg-amber-500"
         />
         <KpiCard 
-          title="Win Rate" 
+          title="Win Rate (Overall)" 
           value={`${stats?.winRate || 0}%`} 
           icon={Target} 
-          trend="+1.5%" 
+          trend="N/A" 
           trendUp={true} 
           color="bg-indigo-500"
         />
@@ -87,9 +86,9 @@ const Dashboard = () => {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Sales Chart */}
+        {/* Main Sales Chart (Dummy) */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Sales Performance</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-6">Weekly Sales Funnel (Simulated)</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={performanceData}>
@@ -107,9 +106,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Lead Sources Pie Chart */}
+        {/* Lead Sources Pie Chart (Real data from leads) */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Lead Sources</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-6">Lead Sources ({leads.length} Total)</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -121,6 +120,7 @@ const Dashboard = () => {
                   outerRadius={100}
                   paddingAngle={5}
                   dataKey="value"
+                  nameKey="name"
                 >
                   {sourceData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -133,8 +133,8 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 gap-4 mt-4">
             {sourceData.map((entry, index) => (
               <div key={index} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }}></div>
-                <span className="text-sm text-slate-600">{entry.name}</span>
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                <span className="text-sm text-slate-600">{entry.name} ({entry.value})</span>
               </div>
             ))}
           </div>
@@ -160,7 +160,7 @@ const KpiCard = ({ title, value, icon: Icon, trend, trendUp, color }) => (
         {trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
         {trend}
       </span>
-      <span className="text-xs text-slate-400">vs last month</span>
+      <span className="text-xs text-slate-400">vs last month (Simulated)</span>
     </div>
   </div>
 );
