@@ -1,96 +1,109 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../services/mockApi';
-import { ArrowLeft, Mail, Phone, MapPin, Building, Calendar, Plus, MessageSquare, Briefcase, Edit } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { leadService, activityService, dealService, userService } from '../services/api';
+import { ArrowLeft, Mail, Phone, MapPin, Building, Plus, MessageSquare, Briefcase, Edit, User as UserIcon } from 'lucide-react';
 import Modal from '../components/Modal';
 
 const LeadDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [lead, setLead] = useState(null);
-  const [notes, setNotes] = useState([]);
-  const [deals, setDeals] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [newNote, setNewNote] = useState('');
-  const [users, setUsers] = useState([]);
-  
-  // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({});
 
-  useEffect(() => {
-    const fetchLeadData = async () => {
-      setLoading(true);
-      try {
-        const [leadData, notesData, allDeals, usersData] = await Promise.all([
-          api.getLead(id),
-          api.getNotes(id),
-          api.getDeals(),
-          api.getUsers()
-        ]);
-        
-        setLead(leadData);
-        setNotes(notesData);
-        setDeals(allDeals.filter(d => (d.leadId?._id || d.leadId) === id));
-        setUsers(usersData);
-      } catch (e) {
-        console.error(e);
-      }
-      setLoading(false);
-    };
-    fetchLeadData();
-  }, [id]);
+  // --- Fetch Data Hooks ---
+  const { data: lead, isLoading: loadingLead } = useQuery({
+    queryKey: ['lead', id],
+    queryFn: () => leadService.getLead(id),
+    enabled: !!id,
+    onSuccess: (data) => {
+        setEditFormData({
+            name: data.name, email: data.email, phone: data.phone, company: data.company, 
+            status: data.status, source: data.source, budget: data.budget || 0, 
+            assignedTo: data.assignedTo?._id || data.assignedTo || '', city: data.city || '', 
+            description: data.description || ''
+        });
+    }
+  });
 
-  const handleAddNote = async (e) => {
+  const { data: notes, isLoading: loadingNotes } = useQuery({
+    queryKey: ['leadNotes', id],
+    queryFn: () => activityService.getLeadNotes(id),
+    enabled: !!id,
+    select: (data) => data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+  });
+
+  const { data: deals, isLoading: loadingDeals } = useQuery({
+    queryKey: ['leadDeals', id],
+    queryFn: () => dealService.getDeals({ leadId: id }),
+    enabled: !!id,
+  });
+  
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => userService.getUsers({ role: 'sales|manager|admin' }),
+  });
+  
+  // --- Mutations ---
+  const addNoteMutation = useMutation({
+    mutationFn: (content) => activityService.addNote(id, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['leadNotes', id]);
+      setNewNote('');
+    },
+    onError: (error) => {
+      alert(`Failed to add note: ${error.response?.data?.message || error.message}`);
+    }
+  });
+  
+  const updateLeadMutation = useMutation({
+    mutationFn: (updates) => leadService.updateLead(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['lead', id]);
+      queryClient.invalidateQueries(['leads']);
+      setIsEditModalOpen(false);
+    },
+    onError: (error) => {
+      alert(`Failed to update lead: ${error.response?.data?.message || error.message}`);
+    }
+  });
+
+
+  // --- Handlers ---
+  const handleAddNote = (e) => {
     e.preventDefault();
     if (!newNote.trim()) return;
-
-    try {
-      const addedNote = await api.addNote({ leadId: id, content: newNote });
-      setNotes([addedNote, ...notes]);
-      setNewNote('');
-    } catch (e) {
-      console.error(e);
-    }
+    addNoteMutation.mutate(newNote);
   };
 
   const handleEditClick = () => {
-    setEditFormData({
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      company: lead.company,
-      status: lead.status,
-      source: lead.source,
-      budget: lead.budget,
-      assignedTo: lead.assignedTo?._id || lead.assignedTo || '',
-      city: lead.city || '',
-      description: lead.description || ''
-    });
+    // Edit form data is already set in the useQuery onSuccess handler
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateLead = async (e) => {
+  const handleUpdateLead = (e) => {
     e.preventDefault();
-    try {
-      const updatedLead = await api.updateLead(id, {
-         ...editFormData,
-         budget: Number(editFormData.budget)
-      });
-      // We need to re-fetch or construct the full lead object with populated assignedTo if possible
-      // For simplicity, we can fetch the specific lead again to get populated data
-      const refreshedLead = await api.getLead(id);
-      setLead(refreshedLead);
-      setIsEditModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to update lead');
+    const updates = { ...editFormData, budget: Number(editFormData.budget) };
+    updateLeadMutation.mutate(updates);
+  };
+
+  if (loadingLead || loadingNotes || loadingDeals) return <div className="p-12 text-center text-slate-500">Loading lead details...</div>;
+  if (!lead) return <div className="p-12 text-center text-red-500">Lead not found.</div>;
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'new': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'qualified': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'contacted': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'lost': return 'bg-red-100 text-red-700 border-red-200';
+      case 'converted': return 'bg-purple-100 text-purple-700 border-purple-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-500">Loading lead details...</div>;
-  if (!lead) return <div className="p-12 text-center text-red-500">Lead not found.</div>;
+  const leadOwner = users.find(u => u.id === (lead.assignedTo?._id || lead.assignedTo));
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -122,11 +135,7 @@ const LeadDetail = () => {
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${
-              lead.status === 'New' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-              lead.status === 'Converted' ? 'bg-purple-100 text-purple-700 border-purple-200' :
-              'bg-emerald-100 text-emerald-700 border-emerald-200'
-            }`}>
+            <span className={`px-3 py-1 rounded-full text-sm font-semibold border capitalize ${getStatusColor(lead.status)}`}>
               {lead.status}
             </span>
             <span className="text-xs text-slate-400">Added on {new Date(lead.createdAt).toLocaleDateString()}</span>
@@ -150,7 +159,7 @@ const LeadDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Info & Deals */}
+        {/* Left Column: Deals & Notes */}
         <div className="lg:col-span-2 space-y-6">
            
            {/* Deals Section */}
@@ -161,18 +170,18 @@ const LeadDetail = () => {
                </h3>
                <button onClick={() => navigate('/pipeline')} className="text-xs font-medium text-primary hover:underline">+ New Deal</button>
              </div>
-             {deals.length === 0 ? (
+             {deals?.length === 0 ? (
                <p className="text-slate-400 text-sm italic">No deals associated with this lead.</p>
              ) : (
                <div className="space-y-3">
-                 {deals.map(deal => (
-                   <div key={deal._id || deal.id} className="p-4 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors flex justify-between items-center">
+                 {deals?.map(deal => (
+                   <div key={deal.id} className="p-4 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors flex justify-between items-center">
                      <div>
                        <p className="font-semibold text-slate-800">{deal.title}</p>
                        <p className="text-xs text-slate-500">Stage: {deal.stage}</p>
                      </div>
                      <div className="font-bold text-slate-700">
-                        {deal.currency === 'INR' ? '₹' : '$'}{deal.value.toLocaleString()}
+                        {deal.currency || '₹'}{deal.value?.toLocaleString()}
                      </div>
                    </div>
                  ))}
@@ -195,27 +204,29 @@ const LeadDetail = () => {
                  onChange={(e) => setNewNote(e.target.value)}
                ></textarea>
                <div className="flex justify-end mt-2">
-                 <button type="submit" className="bg-slate-800 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-slate-700 transition-colors">Add Note</button>
+                 <button type="submit" disabled={addNoteMutation.isPending} className="bg-slate-800 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-slate-700 transition-colors">
+                     {addNoteMutation.isPending ? 'Adding...' : 'Add Note'}
+                 </button>
                </div>
              </form>
 
              <div className="space-y-6">
-               {notes.map((note) => (
-                 <div key={note._id || note.id} className="flex gap-4">
+               {notes?.map((note) => (
+                 <div key={note.id} className="flex gap-4">
                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">
-                     {note.createdBy?.name?.charAt(0) || 'U'}
+                     {note.user?.name?.charAt(0) || 'U'}
                    </div>
                    <div>
                      <div className="bg-slate-50 p-3 rounded-lg rounded-tl-none border border-slate-100">
                        <p className="text-slate-700 text-sm">{note.content}</p>
                      </div>
                      <p className="text-xs text-slate-400 mt-1 pl-1">
-                       {new Date(note.createdAt).toLocaleString()} by {note.createdBy?.name || 'You'}
+                       {new Date(note.createdAt).toLocaleString()} by {note.user?.name || 'Unknown'}
                      </p>
                    </div>
                  </div>
                ))}
-               {notes.length === 0 && (
+               {(notes?.length === 0 || !notes) && (
                  <p className="text-center text-slate-400 text-sm py-4">No notes yet.</p>
                )}
              </div>
@@ -229,7 +240,7 @@ const LeadDetail = () => {
             <div className="space-y-4">
               <div>
                 <p className="text-xs text-slate-400 uppercase font-semibold">Source</p>
-                <p className="text-slate-700">{lead.source}</p>
+                <p className="text-slate-700 capitalize">{lead.source}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-400 uppercase font-semibold">Budget</p>
@@ -239,9 +250,9 @@ const LeadDetail = () => {
                 <p className="text-xs text-slate-400 uppercase font-semibold">Assigned To</p>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs flex items-center justify-center font-bold">
-                    {lead.assignedTo?.name?.charAt(0) || 'U'}
+                    {leadOwner?.name?.charAt(0) || 'U'}
                   </div>
-                  <span className="text-sm text-slate-700">{lead.assignedTo?.name || 'Unassigned'}</span>
+                  <span className="text-sm text-slate-700">{leadOwner?.name || 'Unassigned'}</span>
                 </div>
               </div>
               <div>
@@ -253,10 +264,11 @@ const LeadDetail = () => {
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Modal (Form uses local editFormData state) */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Lead">
         <form onSubmit={handleUpdateLead} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          {/* ... (All form fields, mapped to editFormData and users list) ... */}
+           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
               <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
@@ -289,22 +301,18 @@ const LeadDetail = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={editFormData.status} onChange={e => setEditFormData({...editFormData, status: e.target.value})}>
-                <option value="New">New</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Qualified">Qualified</option>
-                <option value="Lost">Lost</option>
-                <option value="Converted">Converted</option>
+              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize" value={editFormData.status} onChange={e => setEditFormData({...editFormData, status: e.target.value})}>
+                {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={editFormData.source} onChange={e => setEditFormData({...editFormData, source: e.target.value})}>
-                <option value="Website">Website</option>
-                <option value="Referral">Referral</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="Cold Call">Cold Call</option>
-                <option value="Other">Other</option>
+              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize" value={editFormData.source} onChange={e => setEditFormData({...editFormData, source: e.target.value})}>
+                {['website', 'referral', 'call', 'other'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -314,9 +322,9 @@ const LeadDetail = () => {
               <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={editFormData.assignedTo} onChange={e => setEditFormData({...editFormData, assignedTo: e.target.value})}>
                 <option value="">Select User...</option>
                 {users.map(u => (
-                  <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                 ))}
-              </select>why
+              </select>
           </div>
 
           <div>
@@ -332,7 +340,9 @@ const LeadDetail = () => {
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
-            <button type="submit" className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">Save Changes</button>
+            <button type="submit" disabled={updateLeadMutation.isPending} className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
+                {updateLeadMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </form>
       </Modal>
