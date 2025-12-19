@@ -18,14 +18,6 @@ const LeadDetail = () => {
     queryKey: ['lead', id],
     queryFn: () => leadService.getLead(id),
     enabled: !!id,
-    onSuccess: (data) => {
-        setEditFormData({
-            name: data.name, email: data.email, phone: data.phone, company: data.company, 
-            status: data.status, source: data.source, budget: data.budget || 0, 
-            assignedTo: data.assignedTo?._id || data.assignedTo || '', city: data.city || '', 
-            description: data.description || ''
-        });
-    }
   });
 
   const { data: notes, isLoading: loadingNotes } = useQuery({
@@ -61,7 +53,8 @@ const LeadDetail = () => {
   const updateLeadMutation = useMutation({
     mutationFn: (updates) => leadService.updateLead(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries(['lead', id]);
+      // Re-fetch the lead data to update the UI with fresh, populated data
+      queryClient.invalidateQueries(['lead', id]); 
       queryClient.invalidateQueries(['leads']);
       setIsEditModalOpen(false);
     },
@@ -79,13 +72,36 @@ const LeadDetail = () => {
   };
 
   const handleEditClick = () => {
-    // Edit form data is already set in the useQuery onSuccess handler
+    if (!lead) return; // Must have lead data loaded
+
+    // --- FIX: Explicitly populate formData using the resolved 'lead' object ---
+    const assignedId = lead.assignedTo 
+        ? (lead.assignedTo._id || lead.assignedTo) // Check if populated object or just ID string
+        : '';
+        
+    setEditFormData({
+        name: lead.name || '', 
+        email: lead.email || '', 
+        phone: lead.phone || '', 
+        company: lead.company || '', 
+        status: lead.status || 'new', 
+        source: lead.source || 'other', 
+        budget: lead.budget || 0, 
+        assignedTo: assignedId, 
+        city: lead.city || '', 
+        description: lead.description || ''
+    });
+
     setIsEditModalOpen(true);
   };
 
   const handleUpdateLead = (e) => {
     e.preventDefault();
-    const updates = { ...editFormData, budget: Number(editFormData.budget) };
+    const updates = { 
+        ...editFormData, 
+        budget: Number(editFormData.budget),
+        assignedTo: editFormData.assignedTo || null // Ensure null if empty string
+    };
     updateLeadMutation.mutate(updates);
   };
 
@@ -115,11 +131,13 @@ const LeadDetail = () => {
         <button 
           onClick={handleEditClick}
           className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 hover:text-primary hover:border-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          disabled={updateLeadMutation.isPending}
         >
           <Edit size={16} /> Edit Lead
         </button>
       </div>
 
+      {/* Lead Summary Card (Remains the same) */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
         <div className="p-6 border-b border-slate-100 flex justify-between items-start">
           <div className="flex gap-4">
@@ -159,7 +177,7 @@ const LeadDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Deals & Notes */}
+        {/* Left Column: Deals & Notes (Remains the same) */}
         <div className="lg:col-span-2 space-y-6">
            
            {/* Deals Section */}
@@ -168,7 +186,7 @@ const LeadDetail = () => {
                <h3 className="font-bold text-slate-800 flex items-center gap-2">
                  <Briefcase size={20} className="text-primary" /> Active Deals
                </h3>
-               <button onClick={() => navigate('/pipeline')} className="text-xs font-medium text-primary hover:underline">+ New Deal</button>
+               <button onClick={() => navigate('/pipeline')} className="text-xs font-medium text-primary hover:underline">+ New Deal</button> 
              </div>
              {deals?.length === 0 ? (
                <p className="text-slate-400 text-sm italic">No deals associated with this lead.</p>
@@ -233,7 +251,7 @@ const LeadDetail = () => {
            </div>
         </div>
 
-        {/* Right Column: Details */}
+        {/* Right Column: Details (Remains the same) */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h3 className="font-bold text-slate-800 mb-4">Lead Details</h3>
@@ -264,11 +282,10 @@ const LeadDetail = () => {
         </div>
       </div>
 
-      {/* Edit Modal (Form uses local editFormData state) */}
+      {/* Edit Modal (FIXED POPULATION) */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Lead">
         <form onSubmit={handleUpdateLead} className="space-y-4">
-          {/* ... (All form fields, mapped to editFormData and users list) ... */}
-           <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
               <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />

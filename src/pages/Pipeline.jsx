@@ -1,14 +1,17 @@
+// src/pages/Pipeline.jsx (Final & Robust Version - Including owner and lead data)
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dealService, leadService } from '../services/api';
-import { Plus, GripVertical, Calendar } from 'lucide-react';
+import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle } from 'lucide-react';
 import Modal from '../components/Modal';
+import { Link } from 'react-router-dom'; 
 
 const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'WON', 'LOST'];
 
-// --- New Deal Modal Component (Definition moved here for completeness) ---
-
+// --- New Deal Modal Component (included for context) ---
 const NewDealModal = ({ isOpen, onClose }) => {
+    // ... (modal logic remains the same) ...
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState({
         leadId: '',
@@ -18,27 +21,18 @@ const NewDealModal = ({ isOpen, onClose }) => {
         expectedCloseDate: new Date().toISOString().substring(0, 10),
     });
     
-    // Fetch leads that are ready for a deal (not lost/converted)
     const { data: leads = [], isLoading: loadingLeads } = useQuery({
         queryKey: ['convertibleLeads'],
-        // Fetch only leads that are active pipeline stages (assuming the API supports filtering by status)
         queryFn: () => leadService.getLeads({ status: 'new|contacted|qualified' }).then(res => res.data),
     });
     
     const createDealMutation = useMutation({
         mutationFn: dealService.createDeal,
         onSuccess: () => {
-            queryClient.invalidateQueries(['deals']); // Refresh the pipeline
-            queryClient.invalidateQueries(['leads']);  // Optionally refresh leads list
+            queryClient.invalidateQueries(['deals']);
+            queryClient.invalidateQueries(['leads']);
             onClose();
-            // Reset form state after successful submission
-            setFormData({
-                leadId: '',
-                title: '',
-                value: 0,
-                currency: 'INR',
-                expectedCloseDate: new Date().toISOString().substring(0, 10),
-            });
+            setFormData({ leadId: '', title: '', value: 0, currency: 'INR', expectedCloseDate: new Date().toISOString().substring(0, 10) });
         },
         onError: (err) => {
             alert(`Deal creation failed: ${err.response?.data?.message || err.message}`);
@@ -94,7 +88,7 @@ const NewDealModal = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="flex justify-end pt-4 border-t border-slate-100">
-                    <button type="submit" disabled={createDealMutation.isPending} className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
+                    <button type="submit" disabled={createDealMutation.isPending} className="px-4 py-2 bg-blue-900 text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
                         {createDealMutation.isPending ? 'Creating...' : 'Create Deal'}
                     </button>
                 </div>
@@ -118,7 +112,8 @@ const Pipeline = () => {
     placeholderData: [],
   });
 
-  // --- Mutation for Stage Update (4.5) ---
+  // --- Mutations (Stage Update and Close Deal) remain the same ---
+  
   const updateStageMutation = useMutation({
     mutationFn: ({ dealId, stage }) => dealService.updateDealStage(dealId, stage),
     onMutate: async ({ dealId, stage }) => {
@@ -142,7 +137,6 @@ const Pipeline = () => {
     },
   });
   
-  // --- Mutation for Closing Deals (4.6) ---
   const closeDealMutation = useMutation({
     mutationFn: ({ dealId, status, reason }) => dealService.closeDeal(dealId, status, reason),
     onSuccess: () => {
@@ -181,13 +175,11 @@ const Pipeline = () => {
     if (deal.stage !== newStage) {
       // 1. Check for Closing Stages (WON/LOST)
       if (newStage === 'WON' || newStage === 'LOST') {
-        // --- Trigger Closing Flow ---
         const reason = prompt(`Enter reason for closing this deal as ${newStage}:`);
         
         if (reason) {
             closeDealMutation.mutate({ dealId, status: newStage, reason });
         } else {
-            // If user cancels or provides no reason, the stage change is abandoned.
             setDraggedDealId(null); 
             return;
         }
@@ -198,13 +190,12 @@ const Pipeline = () => {
       }
     }
     
-    setDraggedDealId(null); // Reset after action is initiated
+    setDraggedDealId(null); 
   };
 
   // --- UI Helpers ---
 
   const getStageTotal = (stage) => {
-    // Ensure we filter out deals where value is null or undefined
     return deals
       .filter(d => d.stage === stage)
       .reduce((acc, curr) => acc + (curr.value || 0), 0)
@@ -232,7 +223,7 @@ const Pipeline = () => {
         {/* New Deal Button */}
         <button 
           onClick={() => setIsNewDealModalOpen(true)}
-          className="flex items-center gap-2 bg-primary hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium shadow-md shadow-blue-500/20 transition-all"
+          className="flex items-center gap-2 bg-blue-900 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium shadow-md shadow-blue-500/20 transition-all"
         >
           <Plus size={18} />
           New Deal
@@ -255,28 +246,74 @@ const Pipeline = () => {
             </div>
             
             <div className="flex-1 overflow-y-auto space-y-3 pr-1 kanban-scroll">
-              {dealsByStage[stage].map(deal => (
-                <div 
-                  key={deal.id} 
-                  className={`bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-all group ${
-                    draggedDealId === deal.id ? 'opacity-50 border-dashed border-primary-500' : ''
-                  } ${isMutating ? 'pointer-events-none' : 'cursor-move'}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, deal.id)}
-                  onDragEnd={() => setDraggedDealId(null)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-slate-800 text-sm">{deal.title}</h4>
-                    <GripVertical size={16} className="text-slate-300 group-hover:text-slate-500" />
-                  </div>
-                  <div className="text-xl font-bold text-slate-700 mb-3">
-                    {deal.currency || '₹'}{deal.value.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-slate-400 border-t border-slate-100 pt-3">
-                    Expected Close: {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString() : 'N/A'}
-                  </div>
-                </div>
-              ))}
+              {dealsByStage[stage].map(deal => {
+                
+                // --- ROBUST NULL CHECK AND LINK SETUP ---
+                const isLeadValid = !!deal.lead;
+                const leadIdForLink = isLeadValid ? (deal.lead.id || deal.lead._id) : null;
+                const linkTo = isLeadValid ? `/leads/${leadIdForLink}` : '#';
+
+                return (
+                  <Link 
+                    key={deal.id}
+                    to={linkTo}
+                    className={`bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-all group block ${
+                      draggedDealId === deal.id ? 'opacity-50 border-dashed border-primary-500' : ''
+                    } ${isMutating ? 'pointer-events-none' : 'cursor-pointer'}`}
+                    draggable
+                    onDragStart={(e) => {
+                        e.stopPropagation();
+                        handleDragStart(e, deal.id);
+                    }}
+                    onDragEnd={() => setDraggedDealId(null)}
+                    onClick={(e) => {
+                        if (!isLeadValid) {
+                           e.preventDefault();
+                           alert("Cannot view details: Associated lead data is missing or corrupted. Please check deal ID.");
+                        }
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold text-slate-800 text-sm truncate">{deal.title}</h4>
+                      <GripVertical size={16} className="text-slate-300 group-hover:text-slate-500 flex-shrink-0" />
+                    </div>
+                    
+                    {/* Lead and Owner Information */}
+                    <div className="text-xs text-slate-500 space-y-1 mb-2">
+                      {/* Show Lead/Company Name */}
+                      {deal.lead ? (
+                          <div className="flex items-center gap-1.5">
+                              <Building size={12} />
+                              <span className="font-medium text-slate-700 truncate">{deal.lead.company || deal.lead.name}</span>
+                          </div>
+                      ) : (
+                          <div className="flex items-center gap-1.5 text-red-500 italic">
+                              <AlertCircle size={12} /> Missing Lead Data
+                          </div>
+                      )}
+                      
+                      {/* Show Deal Owner (deal.owner is populated in backend) */}
+                      {deal.owner && (
+                          <div className="flex items-center gap-1.5">
+                              <UserIcon size={12} />
+                              <span>Owner: {deal.owner.name.split(' ')[0]}</span>
+                          </div>
+                      )}
+                    </div>
+
+                    <div className="text-xl font-bold text-slate-700 mb-3">
+                      {deal.currency || '₹'}{deal.value.toLocaleString()}
+                    </div>
+                    
+                    <div className="text-xs text-slate-400 border-t border-slate-100 pt-3 flex justify-between">
+                      <span>Expected Close:</span>
+                      <span className="font-medium text-slate-600">
+                        {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
 
             {/* Mutation Status Indicator */}

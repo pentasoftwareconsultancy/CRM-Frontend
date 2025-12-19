@@ -142,7 +142,7 @@ const FollowUps = () => {
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2  bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
+          className="flex items-center gap-2  bg-blue-900 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
           disabled={isLoading}
         >
           <Calendar size={18} />
@@ -298,7 +298,7 @@ const FollowUps = () => {
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
-            <button type="submit" disabled={createFollowUpMutation.isPending} className="px-4 py-2 bg-primary hover:bg-blue-600  text-white font-medium rounded-lg  shadow-md shadow-blue-500/20">
+            <button type="submit" disabled={createFollowUpMutation.isPending} className="px-4 py-2 bg-blue-900 hover:bg-blue-600  text-white font-medium rounded-lg  shadow-md shadow-blue-500/20">
                 {createFollowUpMutation.isPending ? 'Scheduling...' : 'Schedule'}
             </button>
           </div>
