@@ -1,27 +1,34 @@
-// src/pages/Leads2.jsx (Implementing SAFE Export Mutation)
+// src/pages/Leads2.jsx (FINAL)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leadService, userService } from '../services/api';
 import Modal from '../components/Modal';
 import { Plus, Search, Filter, Mail, Phone, MapPin, DollarSign, X, Eye, User, Edit2, Upload, Download, MessageSquare, AlertCircle } from 'lucide-react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-// --- Import Modal Component (Remains the same as previous step) ---
+// --- Import Modal Component (FR-10) ---
 const ImportModal = ({ isOpen, onClose }) => {
-    // ... (modal logic remains the same) ...
+    const queryClient = useQueryClient();
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     
-    const mockImportMutation = useMutation({
+    const importMutation = useMutation({
         mutationFn: async (file) => {
             setUploading(true);
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            throw new Error('Backend API for Import is currently unavailable (Phase 2)');
+            const formData = new FormData();
+            formData.append('file', file);
+            // Call the service with FormData
+            return leadService.importLeads(formData); 
+        },
+        onSuccess: (data) => {
+            alert(`Import successful: ${data.successfulImports} leads added, ${data.failedImports} skipped.`);
+            queryClient.invalidateQueries(['leads']);
         },
         onError: (error) => {
-            alert(`Import failed: ${error.message}`);
+            const message = error.response?.data?.message || 'Error processing file data. Ensure CSV/Excel columns are correct.';
+            alert(`Import failed: ${message}`);
         },
         onSettled: () => {
             setUploading(false);
@@ -31,13 +38,13 @@ const ImportModal = ({ isOpen, onClose }) => {
     });
 
     const handleFileUpload = (e) => {
-        setFile(e.target.files[0]);
+        if (e.target.files) setFile(e.target.files[0]);
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (file) {
-            mockImportMutation.mutate(file);
+            importMutation.mutate(file);
         }
     };
 
@@ -47,13 +54,14 @@ const ImportModal = ({ isOpen, onClose }) => {
                 <div className="border-2 border-dashed border-slate-300 p-6 text-center rounded-lg bg-slate-50">
                     <input
                         type="file"
-                        accept=".csv, .xlsx"
+                        accept=".csv" // Limiting to CSV for simple demo parser
                         onChange={handleFileUpload}
                         className="hidden"
                         id="file-upload"
                     />
                     <label htmlFor="file-upload" className="cursor-pointer text-primary font-medium hover:text-blue-600">
-                        {file ? `File Selected: ${file.name}` : "Click to select CSV or Excel file"}
+                        <Upload size={20} className="mx-auto mb-2 text-slate-400" />
+                        {file ? `File Selected: ${file.name}` : "Click to select CSV file"}
                     </label>
                     <p className="text-sm text-slate-500 mt-2">Max size 5MB. Must contain 'name', 'email', 'company' columns.</p>
                 </div>
@@ -61,7 +69,7 @@ const ImportModal = ({ isOpen, onClose }) => {
                 <div className="flex justify-end pt-4 border-t border-slate-100">
                     <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
                     <button type="submit" disabled={!file || uploading} className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20 disabled:opacity-50">
-                        {uploading ? 'Uploading...' : 'Start Import (501)'}
+                        {uploading ? 'Uploading...' : 'Start Import'}
                     </button>
                 </div>
             </form>
@@ -72,20 +80,17 @@ const ImportModal = ({ isOpen, onClose }) => {
 
 const Leads = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalError, setModalError] = useState(''); 
   
-  const initialFormState = {
-    name: '', email: '', phone: '', company: '', status: 'new',
-    source: 'website', budget: 0, assignedTo: '', city: '', description: ''
-  };
+  const initialFormState = { name: '', email: '', phone: '', company: '', status: 'new', source: 'website', budget: 0, assignedTo: '', city: '', description: '' };
   const [formData, setFormData] = useState(initialFormState);
 
-  // --- Filter State & Fetch Data Hooks (Remains the same) ---
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState({ status: '', source: '', assignedTo: '' });
   
@@ -111,8 +116,6 @@ const Leads = () => {
   const exportMutation = useMutation({
     mutationFn: (filters) => leadService.exportLeads(filters),
     onSuccess: (data, variables) => {
-      // In a real implementation, 'data' here would be the file Blob.
-      // We manually create a URL and trigger the download.
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
@@ -124,20 +127,15 @@ const Leads = () => {
       alert("Export successful.");
     },
     onError: (error) => {
-        // Since the backend is 501 and returns a JSON error, the responseType: 'blob' 
-        // in api.js will cause an unreadable Blob error here.
-        // We revert to a simpler alert for the placeholder.
-        alert(`Export failed: Backend API for Export is currently unavailable (Phase 2).`);
+        alert("Export failed: Server error or unauthorized.");
     },
   });
 
   const handleExport = () => {
-    // Use the current active filters for the export
     exportMutation.mutate({ search: searchTerm, ...activeFilters });
   };
 
 
-  // --- Handlers (handleOpenModal, handleSubmit, clearFilters) remain the same ---
   const handleOpenModal = (lead = null) => {
     setModalError(''); 
     if (lead) {
@@ -229,7 +227,7 @@ const Leads = () => {
         </div>
       </div>
       
-      {/* ... (Filter UI remains the same) ... */}
+      {/* ... (Filter UI) ... */}
       <div className="space-y-4 mb-6">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
@@ -390,7 +388,7 @@ const Leads = () => {
                             className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                             title="View Notes & Activities (FR-11)"
                             // This would typically navigate to the lead detail notes section:
-                            onClick={() => Navigate(`/leads/${lead.id}#notes`)}
+                            onClick={() => navigate(`/leads/${lead.id}#notes`)}
                           >
                             <MessageSquare size={16} />
                           </button>
@@ -435,7 +433,6 @@ const Leads = () => {
         )}
       </div>
 
-      {/* Lead Create/Edit Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Edit Lead" : "Create New Lead"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           

@@ -1,16 +1,16 @@
-// src/services/api.js (REVISED to include all services)
+// src/services/api.js (FINAL & COMPLETE)
 
 import axios from 'axios';
 
 // Configure Axios instance
-const API_BASE_URL = 'http://localhost:5000/api'; // Ensure this matches your backend PORT
+const API_BASE_URL = 'http://localhost:5000/api'; 
 const apiService = axios.create({
   baseURL: API_BASE_URL,
 });
 
 // Request interceptor to attach JWT token (FR-2)
 apiService.interceptors.request.use(config => {
-  const user = JSON.parse(localStorage.getItem('user') || 'null'); // Use 'user' key from authStore
+  const user = JSON.parse(localStorage.getItem('user') || 'null'); 
   const token = user ? user.token : null;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -39,7 +39,6 @@ export const authService = {
 export const userService = {
   getUsers: async (filters = {}) => {
     const res = await apiService.get('/users', { params: filters });
-    // Normalize data structure for frontend consistency (using 'id' instead of '_id')
     return res.data.map(u => ({ ...u, id: u._id }));
   },
   createUser: async (userData) => {
@@ -60,7 +59,6 @@ export const userService = {
 export const leadService = {
   getLeads: async (params = {}) => {
     const res = await apiService.get('/leads', { params });
-    // Normalize lead data and assignedTo field
     const leads = res.data.data.map(l => ({ ...l, id: l._id }));
     return { ...res.data, data: leads };
   },
@@ -76,21 +74,27 @@ export const leadService = {
     const res = await apiService.put(`/leads/${id}`, updates);
     return res.data;
   },
+  
+  // FR-10 Export: Must request BLOB type
   exportLeads: async (params = {}) => {
-        // We configure axios to expect a response type of 'blob' for file download handling
-        const res = await apiService.get('/api/leads/export', { 
-            params,
-            responseType: 'blob' // Important for handling files
-        });
-        return res.data;
-    },
+    const res = await apiService.get('/leads/export', { 
+        params,
+        responseType: 'blob' // CRITICAL for file download
+    });
+    return res.data; 
+  },
+
+  // FR-10 Import Placeholder (Backend returns 501)
+  importLeads: async (formData) => {
+    const res = await apiService.post('/leads/import', formData);
+    return res.data;
+  }
 };
 
 // --- Deal/Pipeline (4.0) ---
 export const dealService = {
   getDeals: async (params = {}) => {
     const res = await apiService.get('/deals', { params });
-    // Ensure deals are returned with 'id'
     return res.data.map(d => ({ ...d, id: d._id }));
   },
   createDeal: async (dealData) => {
@@ -105,22 +109,28 @@ export const dealService = {
     const res = await apiService.patch(`/deals/${dealId}/close`, { status, reason });
     return res.data;
   },
+  deleteDeal: async (id) => { 
+    const res = await apiService.delete(`/deals/${id}`);
+    return res.data;
+  },
 };
+
+// --- Customer Management (7.0) ---
 export const customerService = {
   getCustomers: async (params = {}) => {
-    const res = await apiService.get('/customers', { params }); // 7.1
+    const res = await apiService.get('/customers', { params }); 
     return res.data.map(c => ({ ...c, id: c._id }));
   },
   getCustomer: async (id) => {
-    const res = await apiService.get(`/customers/${id}`); // 7.3
+    const res = await apiService.get(`/customers/${id}`); 
     return { ...res.data, id: res.data._id };
   },
   createCustomer: async (customerData) => {
-    const res = await apiService.post('/customers', customerData); // 7.2
+    const res = await apiService.post('/customers', customerData); 
     return res.data;
   },
   updateCustomer: async (id, updates) => {
-    const res = await apiService.put(`/customers/${id}`, updates); // 7.4
+    const res = await apiService.put(`/customers/${id}`, updates); 
     return res.data;
   },
 };
@@ -133,7 +143,6 @@ export const activityService = {
     return res.data.map(f => ({ ...f, id: f._id }));
   },
   createFollowUp: async (leadId, data) => {
-    // Note: The API path is POST /leads/:leadId/followups
     const res = await apiService.post(`/leads/${leadId}/followups`, data);
     return res.data;
   },
@@ -158,12 +167,11 @@ export const activityService = {
 // --- Notification Service (9.0) ---
 export const notificationService = {
   getNotifications: async () => {
-    const res = await apiService.get('/notifications'); // 9.1 GET /notifications
-    // Note: backend implementation is needed for /notifications
+    const res = await apiService.get('/notifications'); 
     return res.data.map(n => ({ ...n, id: n._id }));
   },
   markNotificationRead: async (id) => {
-    const res = await apiService.patch(`/notifications/${id}/read`); // 9.2 PATCH /notifications/:id/read
+    const res = await apiService.patch(`/notifications/${id}/read`); 
     return res.data;
   },
 };
@@ -171,25 +179,21 @@ export const notificationService = {
 // --- Reports & Dashboard (8.0) ---
 export const reportService = {
   getDashboardStats: async () => {
-    // 8.1 GET /reports/overview
     const res = await apiService.get('/reports/overview');
-    // Normalize to match frontend mock keys
     return {
       totalRevenue: res.data.wonValue,
       activeLeads: res.data.totalLeads,
       pipelineValue: res.data.pipelineValue,
-      winRate: 0 // Cannot calculate win rate accurately without total attempts/time filtering
+      winRate: 0 
     };
   },
   getReports: async () => {
-    // Fetch multiple reports for the Reports page
     const [overview, teamPerformance, conversion] = await Promise.all([
       apiService.get('/reports/overview'),
       apiService.get('/reports/sales-performance'),
       apiService.get('/reports/conversion-rate')
     ]);
 
-    // Simplified mock-like structure for frontend charts
     return {
       pipelineData: [
         { name: 'Total Leads', value: overview.data.totalLeads },
