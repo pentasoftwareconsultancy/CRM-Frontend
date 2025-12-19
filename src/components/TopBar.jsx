@@ -1,47 +1,48 @@
-// src/components/TopBar.jsx (UPDATED with React Query)
+// src/components/TopBar.jsx (FINAL)
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Search, Check, X, User } from 'lucide-react';
-import { notificationService } from '../services/api'; // Assuming you add notificationService to api.js
+import { notificationService } from '../services/api'; 
+import { useAuthStore } from '../store/authStore';
 
-// --- 3.8 Notification Service Implementation ---
-// NOTE: We need to add notificationService to src/services/api.js first.
+// Helper function for relative time display
+const timeAgo = (dateString) => {
+  const now = new Date();
+  const date = new Date(dateString);
+  const seconds = Math.floor((now - date) / 1000);
 
-// Add this to src/services/api.js (if not already done):
-/*
-// --- Notification Service (9.0) ---
-export const notificationService = {
-  getNotifications: async () => {
-    const res = await apiService.get('/notifications'); // 9.1 GET /notifications
-    return res.data.map(n => ({ ...n, id: n._id }));
-  },
-  markNotificationRead: async (id) => {
-    const res = await apiService.patch(`/notifications/${id}/read`); // 9.2 PATCH /notifications/:id/read
-    return res.data;
-  },
+  if (seconds < 60) return `${seconds} seconds ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hours ago`;
+  
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 };
-*/
+
 
 const NotificationPanel = ({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
   
-  // Fetch Notifications (9.1 GET /notifications)
-  const { data: notifications = [], isLoading } = useQuery({
+  // Fetch Notifications: Runs ONLY when isOpen is true (on first click)
+  const { 
+    data: notifications = [], 
+    isLoading,
+    isFetched 
+  } = useQuery({
     queryKey: ['notifications'],
     queryFn: notificationService.getNotifications,
-    // Only fetch if the panel is open
     enabled: isOpen,
-    placeholderData: [],
+    staleTime: 60000, 
   });
 
   // Mutation for Mark as Read (9.2 PATCH /notifications/:id/read)
   const markReadMutation = useMutation({
     mutationFn: (id) => notificationService.markNotificationRead(id),
     onMutate: async (id) => {
-        // Optimistic Update: Mark notification as read immediately in the cache
-        await queryClient.cancelQueries(['notifications']);
+        await queryClient.cancelQueries({ queryKey: ['notifications'] });
         const previousNotifications = queryClient.getQueryData(['notifications']);
 
         queryClient.setQueryData(['notifications'], (old) => 
@@ -50,13 +51,13 @@ const NotificationPanel = ({ isOpen, onClose }) => {
         return { previousNotifications };
     },
     onError: (err, id, context) => {
-        // Rollback on failure
         queryClient.setQueryData(['notifications'], context.previousNotifications);
         console.error("Failed to mark notification as read", err);
     },
     onSettled: () => {
-        // Ensure the list is fresh after mutation attempt
-        queryClient.invalidateQueries(['notifications']);
+        // Invalidate both the count key and the detail key
+        queryClient.invalidateQueries({ queryKey: ['notifications_global_count'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 
@@ -77,7 +78,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
         </button>
       </div>
       <div className="max-h-96 overflow-y-auto">
-        {isLoading ? (
+        {isLoading && !isFetched ? (
           <div className="p-6 text-center text-slate-400 text-sm">Loading...</div>
         ) : notifications.length === 0 ? (
           <div className="p-6 text-center text-slate-400 text-sm">No new notifications</div>
@@ -85,7 +86,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
           <div className="divide-y divide-slate-50">
             {notifications.map((note) => (
               <div 
-                key={note.id} // Use 'id' from normalized API response
+                key={note.id} 
                 className={`p-4 hover:bg-slate-50 transition-colors ${!note.isRead ? 'bg-blue-50/50' : ''}`}
               >
                 <div className="flex gap-3">
@@ -95,13 +96,13 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                       {note.message}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {timeAgo(note.createdAt)}
                     </p>
                   </div>
                   {!note.isRead && (
                     <button 
-                      onClick={() => handleMarkAsRead(note.id)}
-                      className="text-blue-500 hover:bg-blue-100 p-1 rounded transition-colors self-start"
+                      onClick={(e) => { e.preventDefault(); handleMarkAsRead(note.id); }}
+                      className="p-1 text-blue-500 hover:bg-blue-100 rounded transition-colors self-start"
                       title="Mark as read"
                       disabled={markReadMutation.isPending}
                     >
@@ -122,12 +123,13 @@ const TopBar = ({ user }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef(null);
   
-  // To update the red dot count when fetching. 
-  // We fetch a simplified, disabled version of the notifications query globally
+  // Fetch notification status count on mount
   const { data: globalNotifications = [] } = useQuery({
-    queryKey: ['notifications'],
+    queryKey: ['notifications_global_count'],
     queryFn: notificationService.getNotifications,
-    enabled: false, // Don't run this query on mount, only when panel opens
+    staleTime: 60000, 
+    refetchInterval: 30000, // Check for new notifications every 30s
+    select: (data) => data || []
   });
   const unreadCount = globalNotifications.filter(n => !n.isRead).length;
 

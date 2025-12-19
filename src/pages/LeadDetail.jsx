@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leadService, activityService, dealService, userService } from '../services/api';
 import { ArrowLeft, Mail, Phone, MapPin, Building, Plus, MessageSquare, Briefcase, Edit, User as UserIcon } from 'lucide-react';
 import Modal from '../components/Modal';
+import { useAuthStore } from '../store/authStore';
 
 const LeadDetail = () => {
   const { id } = useParams();
@@ -72,11 +73,11 @@ const LeadDetail = () => {
   };
 
   const handleEditClick = () => {
-    if (!lead) return; // Must have lead data loaded
+    if (!lead) return; 
 
-    // --- FIX: Explicitly populate formData using the resolved 'lead' object ---
+    // FIX: Explicitly populate formData using the resolved 'lead' object
     const assignedId = lead.assignedTo 
-        ? (lead.assignedTo._id || lead.assignedTo) // Check if populated object or just ID string
+        ? (lead.assignedTo._id || lead.assignedTo) 
         : '';
         
     setEditFormData({
@@ -100,7 +101,7 @@ const LeadDetail = () => {
     const updates = { 
         ...editFormData, 
         budget: Number(editFormData.budget),
-        assignedTo: editFormData.assignedTo || null // Ensure null if empty string
+        assignedTo: editFormData.assignedTo || null 
     };
     updateLeadMutation.mutate(updates);
   };
@@ -137,7 +138,6 @@ const LeadDetail = () => {
         </button>
       </div>
 
-      {/* Lead Summary Card (Remains the same) */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
         <div className="p-6 border-b border-slate-100 flex justify-between items-start">
           <div className="flex gap-4">
@@ -177,7 +177,7 @@ const LeadDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Deals & Notes (Remains the same) */}
+        {/* Left Column: Deals & Notes */}
         <div className="lg:col-span-2 space-y-6">
            
            {/* Deals Section */}
@@ -251,7 +251,7 @@ const LeadDetail = () => {
            </div>
         </div>
 
-        {/* Right Column: Details (Remains the same) */}
+        {/* Right Column: Details */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h3 className="font-bold text-slate-800 mb-4">Lead Details</h3>
@@ -282,7 +282,7 @@ const LeadDetail = () => {
         </div>
       </div>
 
-      {/* Edit Modal (FIXED POPULATION) */}
+      {/* Edit Modal (Form uses local editFormData state) */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Lead">
         <form onSubmit={handleUpdateLead} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
