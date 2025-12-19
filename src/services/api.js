@@ -76,6 +76,14 @@ export const leadService = {
     const res = await apiService.put(`/leads/${id}`, updates);
     return res.data;
   },
+  exportLeads: async (params = {}) => {
+        // We configure axios to expect a response type of 'blob' for file download handling
+        const res = await apiService.get('/api/leads/export', { 
+            params,
+            responseType: 'blob' // Important for handling files
+        });
+        return res.data;
+    },
 };
 
 // --- Deal/Pipeline (4.0) ---

@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
+import Leads2 from './pages/Leads2';
 import LeadDetail from './pages/LeadDetail';
 import Pipeline from './pages/Pipeline';
 import FollowUps from './pages/FollowUps';
@@ -59,6 +60,7 @@ const App = () => {
               {/* Use Leads2 as the primary leads page */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/leads" element={<Leads />} />
+              <Route path="/leads2" element={<Leads2 />} />
               <Route path="/leads/:id" element={<LeadDetail />} />
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/followups" element={<FollowUps />} />
