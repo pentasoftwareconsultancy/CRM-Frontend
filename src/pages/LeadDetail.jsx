@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'; // added useEffect, useLocation, RouterLink
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leadService, activityService, dealService, userService } from '../services/api';
 import { ArrowLeft, Mail, Phone, MapPin, Building, Plus, MessageSquare, Briefcase, Edit, User as UserIcon } from 'lucide-react';
@@ -63,6 +63,18 @@ const LeadDetail = () => {
       alert(`Failed to update lead: ${error.response?.data?.message || error.message}`);
     }
   });
+
+  // --- FIX: Implement Scroll Logic on Hash Change ---
+  const location = useLocation(); // new
+  useEffect(() => {
+    if (location.hash) {
+      // ensure DOM is ready before attempting to scroll
+      requestAnimationFrame(() => {
+        const el = document.getElementById(location.hash.substring(1));
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+  }, [location.hash, loadingLead, loadingNotes]);
 
 
   // --- Handlers ---
@@ -207,8 +219,8 @@ const LeadDetail = () => {
              )}
            </div>
 
-           {/* Notes Section */}
-           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+           {/* Notes Section: ADD ID HERE */}
+           <div id="notes-section" className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
              <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
                <MessageSquare size={20} className="text-primary" /> Notes & Activity
              </h3>

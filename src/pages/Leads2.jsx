@@ -186,6 +186,20 @@ const Leads = () => {
     }
   };
 
+  // --- NEW: Scroll Navigation Handler ---
+  const handleNotesClick = (e, leadId) => {
+    e.preventDefault();
+    
+    if (window.location.pathname === `/leads/${leadId}`) {
+        const notesSection = document.getElementById('notes-section');
+        if (notesSection) {
+            notesSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    } else {
+        navigate(`/leads/${leadId}#notes-section`);
+    }
+  };
+
   const currentLeads = leads || [];
   const isLoading = loadingLeads || loadingUsers || leadMutation.isPending || exportMutation.isPending;
 
@@ -383,15 +397,20 @@ const Leads = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          {/* Hint at FR-11: Quick Activity/Notes Link */}
-                          <button 
-                            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                          
+                          {/* FR-11: Notes Count and Scroll - use Link with hash */}
+                          <Link 
+                            to={`/leads/${lead.id}#notes-section`}
+                            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors relative"
                             title="View Notes & Activities (FR-11)"
-                            // This would typically navigate to the lead detail notes section:
-                            onClick={() => navigate(`/leads/${lead.id}#notes`)}
                           >
                             <MessageSquare size={16} />
-                          </button>
+                            {lead.notesCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                    {lead.notesCount}
+                                </span>
+                            )}
+                          </Link>
 
                           <button 
                             onClick={() => handleOpenModal(lead)}
@@ -401,6 +420,8 @@ const Leads = () => {
                           >
                             <Edit2 size={16} />
                           </button>
+                          
+                          {/* Standard View Link */}
                           <Link 
                             to={`/leads/${lead.id}`} 
                             className="inline-flex items-center gap-1 text-primary hover:text-blue-700 text-sm font-medium hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
