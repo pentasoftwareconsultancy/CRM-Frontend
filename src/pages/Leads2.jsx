@@ -93,7 +93,8 @@ const Leads = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState({ status: '', source: '', assignedTo: '' });
   
-  const { data: userData, isLoading: loadingUsers } = useQuery({ queryKey: ['users'], queryFn: () => userService.getUsers({ role: 'sales|manager|admin' }) });
+  // Keep users query for the ASSIGNMENT DROPDOWN in the modal
+  const { data: userData, isLoading: loadingUsers } = useQuery({ queryKey: ['users'], queryFn: () => userService.getUsers() });
   const users = userData || [];
 
   const { data: leadsData, isLoading: loadingLeads } = useQuery({
@@ -111,7 +112,6 @@ const Leads = () => {
     onError: (error) => { setModalError(error.response?.data?.message || 'Operation Failed: Check if email/phone already exists.'); }
   });
 
-  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (leadId) => leadService.deleteLead(leadId),
     onSuccess: () => {
@@ -159,10 +159,14 @@ const Leads = () => {
     setModalError(''); 
     if (lead) {
       setEditingId(lead.id);
+      
+      // Use the ID from the populated assignedTo object for form initialization
+      const assignedId = lead.assignedTo ? (lead.assignedTo._id || lead.assignedTo) : '';
+
       setFormData({
         name: lead.name, email: lead.email, phone: lead.phone, company: lead.company, 
         status: lead.status, source: lead.source, budget: lead.budget || 0, 
-        assignedTo: lead.assignedTo?._id || lead.assignedTo || (user?.id || ''), 
+        assignedTo: assignedId, // Use the ID here
         city: lead.city || '', 
         description: lead.description || ''
       });
@@ -343,7 +347,9 @@ const Leads = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentLeads.map((lead) => {
-                  const owner = users.find(u => u.id === (lead.assignedTo?._id || lead.assignedTo));
+                  // FIX: Use populated data directly from the lead object (lead.assignedTo)
+                  const ownerName = lead.assignedTo ? lead.assignedTo.name : 'Unassigned';
+                  const ownerInitial = lead.assignedTo ? lead.assignedTo.name.charAt(0) : 'U';
 
                   return (
                     <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
@@ -385,27 +391,30 @@ const Leads = () => {
                           </div>
                         )}
                       </td>
+                      {/* FIXED OWNER DISPLAY */}
                       <td className="px-6 py-4">
-                        {owner ? (
+                        {lead.assignedTo ? (
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs flex items-center justify-center font-bold">
-                                    {owner.name.charAt(0)}
+                                    {ownerInitial}
                                 </div>
-                                <span className="text-sm text-slate-600">{owner.name.split(' ')[0]}</span>
+                                <span className="text-sm text-slate-600">{ownerName.split(' ')[0]}</span>
                             </div>
                         ) : (
                             <span className="text-xs text-slate-400">Unassigned</span>
                         )}
                       </td>
+                      {/* END FIXED OWNER DISPLAY */}
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
                           
                           <button 
-                            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors relative"
                             title="View Notes & Activities (FR-11)"
                             onClick={() => navigate(`/leads/${lead.id}#notes-section`)}
                           >
                             <MessageSquare size={16} />
+                            {/* Note Count Display (Requires backend aggregation fix) */}
                             {lead.notesCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                                     {lead.notesCount}
