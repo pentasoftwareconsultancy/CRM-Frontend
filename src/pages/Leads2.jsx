@@ -1,10 +1,10 @@
-// src/pages/Leads2.jsx (FINAL)
+// src/pages/Leads2.jsx (FINAL - add delete functionality)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leadService, userService } from '../services/api';
 import Modal from '../components/Modal';
-import { Plus, Search, Filter, Mail, Phone, MapPin, DollarSign, X, Eye, User, Edit2, Upload, Download, MessageSquare, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, Mail, Phone, MapPin, DollarSign, X, Eye, User, Edit2, Upload, Download, MessageSquare, AlertCircle, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
@@ -19,7 +19,6 @@ const ImportModal = ({ isOpen, onClose }) => {
             setUploading(true);
             const formData = new FormData();
             formData.append('file', file);
-            // Call the service with FormData
             return leadService.importLeads(formData); 
         },
         onSuccess: (data) => {
@@ -54,7 +53,7 @@ const ImportModal = ({ isOpen, onClose }) => {
                 <div className="border-2 border-dashed border-slate-300 p-6 text-center rounded-lg bg-slate-50">
                     <input
                         type="file"
-                        accept=".csv" // Limiting to CSV for simple demo parser
+                        accept=".csv"
                         onChange={handleFileUpload}
                         className="hidden"
                         id="file-upload"
@@ -112,10 +111,21 @@ const Leads = () => {
     onError: (error) => { setModalError(error.response?.data?.message || 'Operation Failed: Check if email/phone already exists.'); }
   });
 
-  // --- Export Mutation (FR-10) ---
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (leadId) => leadService.deleteLead(leadId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['leads']);
+      alert("Lead soft-deleted successfully.");
+    },
+    onError: (error) => {
+      alert(`Deletion failed: ${error.response?.data?.message || 'Unauthorized or server error.'}`);
+    }
+  });
+
   const exportMutation = useMutation({
     mutationFn: (filters) => leadService.exportLeads(filters),
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
@@ -135,6 +145,15 @@ const Leads = () => {
     exportMutation.mutate({ search: searchTerm, ...activeFilters });
   };
 
+  const handleDeleteLead = (leadId, leadName) => {
+    if (user.role !== 'admin' && user.role !== 'manager') {
+        return alert("You must be an Admin or Manager to delete a lead.");
+    }
+
+    if (window.confirm(`Are you sure you want to soft-delete the lead: ${leadName}?`)) {
+        deleteMutation.mutate(leadId);
+    }
+  };
 
   const handleOpenModal = (lead = null) => {
     setModalError(''); 
@@ -186,22 +205,10 @@ const Leads = () => {
     }
   };
 
-  // --- NEW: Scroll Navigation Handler ---
-  const handleNotesClick = (e, leadId) => {
-    e.preventDefault();
-    
-    if (window.location.pathname === `/leads/${leadId}`) {
-        const notesSection = document.getElementById('notes-section');
-        if (notesSection) {
-            notesSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    } else {
-        navigate(`/leads/${leadId}#notes-section`);
-    }
-  };
-
   const currentLeads = leads || [];
-  const isLoading = loadingLeads || loadingUsers || leadMutation.isPending || exportMutation.isPending;
+  const isLoading = loadingLeads || loadingUsers || leadMutation.isPending || exportMutation.isPending || deleteMutation.isPending;
+
+  const canDelete = user.role === 'admin' || user.role === 'manager';
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -211,7 +218,6 @@ const Leads = () => {
           <p className="text-slate-500 mt-1">Capture, organize, and manage your potential customers.</p>
         </div>
         <div className="flex gap-3">
-            {/* FR-10: Import Button */}
             <button
                 onClick={() => setIsImportModalOpen(true)}
                 className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium hover:bg-slate-50 text-sm transition-colors"
@@ -220,7 +226,6 @@ const Leads = () => {
                 <Upload size={18} />
                 Import
             </button>
-            {/* FR-10: Export Button (Now uses mutation) */}
             <button
                 onClick={handleExport}
                 className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium hover:bg-slate-50 text-sm transition-colors"
@@ -229,7 +234,6 @@ const Leads = () => {
                 <Download size={18} />
                 {exportMutation.isPending ? 'Exporting...' : 'Export'}
             </button>
-            {/* Add Lead Button */}
             <button 
               onClick={() => handleOpenModal()}
               className="flex items-center gap-2 bg-primary hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
@@ -241,7 +245,6 @@ const Leads = () => {
         </div>
       </div>
       
-      {/* ... (Filter UI) ... */}
       <div className="space-y-4 mb-6">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
@@ -268,7 +271,6 @@ const Leads = () => {
           </button>
         </div>
 
-        {/* Expandable Filter Panel */}
         {showFilters && (
           <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in slide-in-from-top-2">
              <div className="flex justify-between items-center mb-4">
@@ -398,11 +400,10 @@ const Leads = () => {
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
                           
-                          {/* FR-11: Notes Count and Scroll - use Link with hash */}
-                          <Link 
-                            to={`/leads/${lead.id}#notes-section`}
-                            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors relative"
+                          <button 
+                            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                             title="View Notes & Activities (FR-11)"
+                            onClick={() => navigate(`/leads/${lead.id}#notes-section`)}
                           >
                             <MessageSquare size={16} />
                             {lead.notesCount > 0 && (
@@ -410,7 +411,7 @@ const Leads = () => {
                                     {lead.notesCount}
                                 </span>
                             )}
-                          </Link>
+                          </button>
 
                           <button 
                             onClick={() => handleOpenModal(lead)}
@@ -421,7 +422,17 @@ const Leads = () => {
                             <Edit2 size={16} />
                           </button>
                           
-                          {/* Standard View Link */}
+                          {canDelete && (
+                            <button 
+                              onClick={(e) => { e.preventDefault(); handleDeleteLead(lead.id, lead.name); }}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete Lead"
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                          
                           <Link 
                             to={`/leads/${lead.id}`} 
                             className="inline-flex items-center gap-1 text-primary hover:text-blue-700 text-sm font-medium hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"

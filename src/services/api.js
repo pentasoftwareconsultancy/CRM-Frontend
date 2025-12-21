@@ -55,7 +55,7 @@ export const userService = {
   },
 };
 
-// --- Lead Management (remains the same) ---
+// --- Lead Management (3.0) ---
 export const leadService = {
   getLeads: async (params = {}) => {
     const res = await apiService.get('/leads', { params });
@@ -75,6 +75,7 @@ export const leadService = {
     return res.data;
   },
   
+  // FR-10 Export
   exportLeads: async (params = {}) => {
     const res = await apiService.get('/leads/export', { 
         params,
@@ -83,8 +84,15 @@ export const leadService = {
     return res.data; 
   },
 
+  // FR-10 Import Placeholder
   importLeads: async (formData) => {
     const res = await apiService.post('/leads/import', formData);
+    return res.data;
+  },
+  
+  // 3.5 DELETE /leads/:id (NEWLY ADDED)
+  deleteLead: async (id) => {
+    const res = await apiService.delete(`/leads/${id}`);
     return res.data;
   }
 };
