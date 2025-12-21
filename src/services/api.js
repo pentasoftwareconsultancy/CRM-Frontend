@@ -1,4 +1,4 @@
-// src/services/api.js (FINAL & COMPLETE)
+// src/services/api.js (FINAL)
 
 import axios from 'axios';
 
@@ -20,7 +20,7 @@ apiService.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
-// --- Authentication Service (FR-1, 1.2) ---
+// --- Authentication Service (remains the same) ---
 export const authService = {
   login: async (email, password) => {
     const res = await apiService.post('/auth/login', { email, password });
@@ -35,7 +35,7 @@ export const authService = {
   },
 };
 
-// --- User Management (2.0 - Admin Only) ---
+// --- User Management (remains the same) ---
 export const userService = {
   getUsers: async (filters = {}) => {
     const res = await apiService.get('/users', { params: filters });
@@ -55,7 +55,7 @@ export const userService = {
   },
 };
 
-// --- Lead Management (3.0) ---
+// --- Lead Management (remains the same) ---
 export const leadService = {
   getLeads: async (params = {}) => {
     const res = await apiService.get('/leads', { params });
@@ -75,23 +75,21 @@ export const leadService = {
     return res.data;
   },
   
-  // FR-10 Export: Must request BLOB type
   exportLeads: async (params = {}) => {
     const res = await apiService.get('/leads/export', { 
         params,
-        responseType: 'blob' // CRITICAL for file download
+        responseType: 'blob'
     });
     return res.data; 
   },
 
-  // FR-10 Import Placeholder (Backend returns 501)
   importLeads: async (formData) => {
     const res = await apiService.post('/leads/import', formData);
     return res.data;
   }
 };
 
-// --- Deal/Pipeline (4.0) ---
+// --- Deal/Pipeline (remains the same) ---
 export const dealService = {
   getDeals: async (params = {}) => {
     const res = await apiService.get('/deals', { params });
@@ -115,7 +113,7 @@ export const dealService = {
   },
 };
 
-// --- Customer Management (7.0) ---
+// --- Customer Management (remains the same) ---
 export const customerService = {
   getCustomers: async (params = {}) => {
     const res = await apiService.get('/customers', { params }); 
@@ -136,7 +134,7 @@ export const customerService = {
 };
 
 
-// --- Activities & Notes (5.0, 6.0) ---
+// --- Activities & Notes (remains the same) ---
 export const activityService = {
   getFollowUps: async (params = { status: 'pending' }) => {
     const res = await apiService.get('/followups', { params });
@@ -164,7 +162,7 @@ export const activityService = {
   }
 };
 
-// --- Notification Service (9.0) ---
+// --- Notification Service (remains the same) ---
 export const notificationService = {
   getNotifications: async () => {
     const res = await apiService.get('/notifications'); 
@@ -179,14 +177,29 @@ export const notificationService = {
 // --- Reports & Dashboard (8.0) ---
 export const reportService = {
   getDashboardStats: async () => {
+    // Calls the backend, which now includes CP/PP calculations
     const res = await apiService.get('/reports/overview');
+    
+    // FIX: Extract all fields for trend calculation in frontend
     return {
-      totalRevenue: res.data.wonValue,
-      activeLeads: res.data.totalLeads,
+      totalLeads: res.data.totalLeads, 
       pipelineValue: res.data.pipelineValue,
-      winRate: 0 
+      totalRevenue: res.data.wonValue,
+      newLeads: res.data.newLeads,
+      winRate: res.data.winRate,
+      
+      prevWonValue: res.data.prevWonValue,
+      prevLeads: res.data.prevLeads,
+      prevWinRate: res.data.prevWinRate,
     };
   },
+  
+  // NEW: Service to fetch weekly performance data
+  getWeeklyPerformance: async () => {
+    const res = await apiService.get('/reports/weekly-performance');
+    return res.data;
+  },
+  
   getReports: async () => {
     const [overview, teamPerformance, conversion] = await Promise.all([
       apiService.get('/reports/overview'),
