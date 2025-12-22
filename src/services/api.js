@@ -37,9 +37,11 @@ export const authService = {
 
 // --- User Management (remains the same) ---
 export const userService = {
+  // Returns paged response
   getUsers: async (filters = {}) => {
     const res = await apiService.get('/users', { params: filters });
-    return res.data.map(u => ({ ...u, id: u._id }));
+    const users = res.data.data.map(u => ({ ...u, id: u._id }));
+    return { ...res.data, data: users }; 
   },
   createUser: async (userData) => {
     const res = await apiService.post('/users', userData);
@@ -123,9 +125,11 @@ export const dealService = {
 
 // --- Customer Management (remains the same) ---
 export const customerService = {
+  // Returns paged response
   getCustomers: async (params = {}) => {
-    const res = await apiService.get('/customers', { params }); 
-    return res.data.map(c => ({ ...c, id: c._id }));
+    const res = await apiService.get('/customers', { params });
+    const customers = res.data.data.map(c => ({ ...c, id: c._id }));
+    return { ...res.data, data: customers }; 
   },
   getCustomer: async (id) => {
     const res = await apiService.get(`/customers/${id}`); 
@@ -144,9 +148,11 @@ export const customerService = {
 
 // --- Activities & Notes (remains the same) ---
 export const activityService = {
-  getFollowUps: async (params = { status: 'pending' }) => {
+  // Returns paged response
+  getFollowUps: async (params = {}) => {
     const res = await apiService.get('/followups', { params });
-    return res.data.map(f => ({ ...f, id: f._id }));
+    const followups = res.data.data.map(f => ({ ...f, id: f._id }));
+    return { ...res.data, data: followups };
   },
   createFollowUp: async (leadId, data) => {
     const res = await apiService.post(`/leads/${leadId}/followups`, data);

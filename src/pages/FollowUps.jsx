@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { activityService, leadService, userService } from '../services/api';
-import { Calendar, CheckCircle, Phone, Mail, Users, FileText, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, Phone, Mail, Users, FileText, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Modal from '../components/Modal';
 
 const FollowUps = () => {
@@ -10,13 +10,12 @@ const FollowUps = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState('');
   
-  const initialFormState = {
-    leadId: '',
-    type: 'call',
-    scheduledAt: '',
-    note: ''
-  };
+  const initialFormState = { leadId: '', type: 'call', scheduledAt: '', note: '' };
   const [formData, setFormData] = useState(initialFormState);
+
+  // --- Pagination State ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   // --- Fetch Data Hooks ---
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
@@ -27,26 +26,23 @@ const FollowUps = () => {
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: () => userService.getUsers({ status: 'active' }),
+    queryFn: () => userService.getUsers({ limit: 100 }).then(res => res.data),
   });
-  
-  // Fetch Follow-Ups (5.3 GET /followups)
-  const { data: followUps = [], isLoading: loadingFollowUps } = useQuery({
-    queryKey: ['followups'],
-    queryFn: () => activityService.getFollowUps({ status: 'pending|completed' }),
-    select: (data) => {
-        // Enhance data structure to handle overdue classification client-side
-        const now = new Date();
-        return data.map(f => {
-            const isOverdue = f.status === 'pending' && new Date(f.scheduledAt) < now;
-            return {
-                ...f,
-                status: isOverdue ? 'Overdue' : f.status,
-                isOverdue: isOverdue
-            };
-        });
-    }
+
+  // Fetch Follow-Ups (PAGED)
+  const { data: followUpsData, isLoading: loadingFollowUps, isFetching } = useQuery({
+    queryKey: ['followups', activeTab, currentPage, limit],
+    queryFn: () => activityService.getFollowUps({ 
+        status: activeTab === 'completed' ? 'completed' : 'pending',
+        page: currentPage, 
+        limit: limit 
+    }),
+    keepPreviousData: true,
   });
+
+  const followUps = followUpsData?.data || [];
+  const totalFollowUps = followUpsData?.total || 0;
+  const totalPages = Math.ceil(totalFollowUps / limit);
 
   // --- Mutations ---
   const createFollowUpMutation = useMutation({
@@ -63,7 +59,7 @@ const FollowUps = () => {
   });
 
   const completeFollowUpMutation = useMutation({
-    mutationFn: (id) => activityService.completeFollowUp(id, { result: 'Completed successfully.' }), // Simplified completion data
+    mutationFn: (id) => activityService.completeFollowUp(id, { result: 'Completed successfully.' }),
     onSuccess: () => {
       queryClient.invalidateQueries(['followups']);
     },
@@ -131,7 +127,7 @@ const FollowUps = () => {
     }
   };
   
-  const isLoading = loadingLeads || loadingFollowUps || createFollowUpMutation.isPending || completeFollowUpMutation.isPending;
+  const isLoading = loadingLeads || loadingFollowUps || isFetching || createFollowUpMutation.isLoading || completeFollowUpMutation.isLoading;
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
