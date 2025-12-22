@@ -44,16 +44,82 @@ const AdminUsers = () => {
   const totalUsers = usersData?.total || 0;
   const totalPages = Math.ceil(totalUsers / limit);
 
-  // Mutation for Add/Edit/Deactivate (remains the same)
-  const userMutation = useMutation({ /* ... */ });
-  const deactivateMutation = useMutation({ /* ... */ });
 
+  // Mutation for Add/Edit/Deactivate (2.2, 2.4, 2.5)
+  const userMutation = useMutation({
+    mutationFn: (data) => {
+      if (editingUser) {
+        return userService.updateUser(editingUser.id, data);
+      }
+      return userService.createUser(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['adminUsers']);
+      setIsModalOpen(false);
+      setEditingUser(null);
+      setError('');
+    },
+    onError: (err) => {
+      setError(err.response?.data?.message || 'Operation Failed.');
+    }
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id) => userService.deactivateUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['adminUsers']);
+    },
+    onError: (err) => {
+      alert(`Deactivation failed: ${err.response?.data?.message || err.message}`);
+    }
+  });
 
   // --- Handlers ---
-  const handleOpenModal = (user = null) => { /* ... */ };
-  const handleSubmit = (e) => { /* ... */ };
-  const handleDelete = (id) => { /* ... */ };
-  
+  const handleOpenModal = (user = null) => {
+    setError('');
+    if (user) {
+      setEditingUser(user);
+      setFormData({ 
+        name: user.name, 
+        email: user.email, 
+        role: user.role, 
+        status: user.status,
+        designation: user.designation || '',
+        password: '' // Password should never be pre-filled/sent back
+      });
+    } else {
+      setEditingUser(null);
+      setFormData({ name: '', email: '', role: 'sales', designation: '', status: 'active', password: '' });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const payload = { 
+        name: formData.name, 
+        role: formData.role, 
+        designation: formData.designation,
+        status: formData.status 
+    };
+
+    if (!editingUser) {
+        if (!formData.email || !formData.password) {
+            return setError('Email and Password are required for new users.');
+        }
+        payload.email = formData.email;
+        payload.password = formData.password;
+    }
+    
+    userMutation.mutate(payload);
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm('Are you sure you want to deactivate this user? This is reversible.')) {
+      deactivateMutation.mutate(id);
+    }
+  };
+
   // --- UI Helpers ---
   // Line 107 in your previous trace: users.filter is now correct as 'users' is an array
   const filteredUsers = users.filter(u => 
@@ -61,8 +127,13 @@ const AdminUsers = () => {
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleIcon = (role) => { /* ... */ };
-  
+  const getRoleIcon = (role) => {
+    switch(role) {
+      case 'admin': return <ShieldCheck size={16} className="text-purple-600" />;
+      case 'manager': return <Shield size={16} className="text-blue-600" />;
+      default: return <UserIcon size={16} className="text-slate-500" />;
+    }
+  };  
   const isLoading = loadingUsers || isFetching || userMutation.isPending || deactivateMutation.isPending;
 
   return (
