@@ -1,4 +1,4 @@
-// src/pages/Leads2.jsx (FINAL WITH PAGINATION, DATES, AND OWNER FIX)
+// src/pages/Leads2.jsx (FINAL COMPLETE CODE with Pagination, Dates, and Owner Fix)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +19,6 @@ const ImportModal = ({ isOpen, onClose }) => {
             setUploading(true);
             const formData = new FormData();
             formData.append('file', file);
-            // Simulating real FormData submission to the backend API endpoint
             return leadService.importLeads(formData); 
         },
         onSuccess: (data) => {
@@ -90,23 +89,19 @@ const Leads = () => {
   
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit, setLimit] = useState(10); // Changed default to 10 for better pagination testing
+  const [limit, setLimit] = useState(10); 
 
-  const initialFormState = { name: '', email: '', phone: '', company: '', status: 'new', source: 'website', budget: 0, assignedTo: '', city: '', description: '', customSourceDetail: '' };
+  const initialFormState = { name: '', email: '', phone: '', company: '', status: 'new', source: 'website', budget: 0, assignedTo: '', city: '', description: '' };
   const [formData, setFormData] = useState(initialFormState);
 
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState({ status: '', source: '', assignedTo: '' });
   
-  // Fetch users for ASSIGNMENT dropdown and filtering lookups (minimal fields)
-  const { data: userData, isLoading: loadingUsers } = useQuery({ 
-    queryKey: ['users'], 
-    queryFn: () => userService.getUsers({ limit: 100 }).then(res => res.data),
-    select: (response) => response.data || [] // CRITICAL: Extract array data
+  const { data: users = [], isLoading: loadingUsers } = useQuery({ 
+    queryKey: ['assignees'], 
+    queryFn: userService.getAssignees,
   });
-  const users = userData || [];
 
-  // Fetch Leads with Pagination/Filters
   const { data: leadsData, isLoading: loadingLeads, isFetching } = useQuery({
     queryKey: ['leads', { searchTerm, filters: activeFilters, currentPage, limit }],
     queryFn: () => leadService.getLeads({ 
@@ -172,16 +167,13 @@ const Leads = () => {
       setEditingId(lead.id);
       
       const assignedId = lead.assignedTo ? (lead.assignedTo._id || lead.assignedTo) : '';
-      const customSourceDetail = lead.source === 'other' ? (lead.description || '').split('Custom Source: ')[1] || '' : '';
-
 
       setFormData({
         name: lead.name, email: lead.email, phone: lead.phone, company: lead.company, 
         status: lead.status, source: lead.source, budget: lead.budget || 0, 
         assignedTo: assignedId, 
         city: lead.city || '', 
-        description: lead.description || '',
-        customSourceDetail: customSourceDetail
+        description: lead.description || ''
       });
     } else {
       setEditingId(null);
@@ -209,7 +201,7 @@ const Leads = () => {
         description: finalDescription,
         assignedTo: formData.assignedTo || user.id
     };
-    delete payload.customSourceDetail; // Clean up temp field
+    delete payload.customSourceDetail;
 
     leadMutation.mutate(payload);
   };
@@ -363,14 +355,13 @@ const Leads = () => {
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Budget</th>
                   <th className="px-6 py-4">Owner (FR-9)</th> 
-                  <th className="px-6 py-4">Dates</th> {/* Dates Column Header */}
+                  <th className="px-6 py-4">Dates</th> 
                   <th className="px-6 py-4 text-right">Actions (FR-11)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentLeads.map((lead) => {
-                  const ownerName = lead.assignedTo ? lead.assignedTo.name : 'Unassigned';
-                  const ownerInitial = lead.assignedTo ? lead.assignedTo.name.charAt(0) : 'U';
+                  const owner = users.find(u => u.id === (lead.assignedTo?._id || lead.assignedTo));
 
                   return (
                     <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
@@ -412,19 +403,19 @@ const Leads = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        {lead.assignedTo ? (
-                            <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs flex items-center justify-center font-bold">
-                                    {ownerInitial}
-                                </div>
-                                <span className="text-sm text-slate-600">{ownerName.split(' ')[0]}</span>
+                        <td className="px-6 py-4">
+                        {owner ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs flex items-center justify-center font-bold">
+                              {owner.name.charAt(0)}
                             </div>
+                            <span className="text-sm text-slate-600">{owner.name.split(' ')[0]}</span>
+                          </div>
                         ) : (
-                            <span className="text-xs text-slate-400">Unassigned</span>
+                          <span className="text-xs text-slate-400">Unassigned</span>
                         )}
-                      </td>
-                      {/* Dates Column (NEW) */}
+                        </td>
+                      {/* Dates Column */}
                       <td className="px-6 py-4 text-xs text-slate-500">
                           <p>Created: {new Date(lead.createdAt).toLocaleDateString()}</p>
                           <p>Updated: {new Date(lead.updatedAt).toLocaleDateString()}</p>
@@ -497,6 +488,39 @@ const Leads = () => {
         )}
       </div>
 
+      {/* Pagination Controls */}
+      <div className="flex justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+        <p className="text-sm text-slate-600">
+            Showing {Math.min(totalLeads, (currentPage - 1) * limit + 1)} - {Math.min(totalLeads, currentPage * limit)} of {totalLeads} leads
+        </p>
+        <div className="flex items-center gap-4">
+             <select
+                value={limit}
+                onChange={(e) => { setLimit(Number(e.target.value)); setCurrentPage(1); }}
+                className="rounded-lg border border-slate-300 text-sm py-1"
+                disabled={isLoading}
+            >
+                {[10, 20, 50].map(l => <option key={l} value={l}>{l} per page</option>)}
+            </select>
+            <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1 || isLoading}
+                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+                <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+            <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages || isLoading || totalLeads === 0}
+                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+                <ChevronRight size={16} />
+            </button>
+        </div>
+      </div>
+
+
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Edit Lead" : "Create New Lead"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           
@@ -528,7 +552,8 @@ const Leads = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-             <div>
+            {/* ... (Budget and City inputs) ... */}
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Budget</label>
               <input type="number" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})} />
             </div>

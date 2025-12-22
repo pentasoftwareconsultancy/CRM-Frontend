@@ -43,6 +43,10 @@ export const userService = {
     const users = res.data.data.map(u => ({ ...u, id: u._id }));
     return { ...res.data, data: users }; 
   },
+    getAssignees: async () => {
+    const res = await apiService.get('/users/assignees');
+    return res.data.map(u => ({ ...u, id: u._id })); // Return array directly
+  },
   createUser: async (userData) => {
     const res = await apiService.post('/users', userData);
     return res.data;
