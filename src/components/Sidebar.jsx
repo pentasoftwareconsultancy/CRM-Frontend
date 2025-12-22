@@ -6,7 +6,6 @@ const Sidebar = ({ onLogout, userRole }) => {
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard },
     { name: 'Leads', to: '/leads', icon: Users },
-    { name: 'Leads2', to: '/leads2', icon: Users },
     { name: 'Pipeline', to: '/pipeline', icon: Trello },
     { name: 'Follow Ups', to: '/followups', icon: CalendarClock },
     { name: 'Customers', to: '/customers', icon: DollarSign },
