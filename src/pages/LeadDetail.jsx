@@ -34,9 +34,11 @@ const LeadDetail = () => {
     enabled: !!id,
   });
   
+  // FIX: Extract the data array for the assignment dropdown
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: () => userService.getUsers({ role: 'sales|manager|admin' }),
+    queryFn: () => userService.getUsers({ role: 'sales|manager|admin', limit: 100 }), // Increased limit for full list
+    select: (response) => response.data || [] // CRITICAL FIX
   });
   
   // --- Mutations ---
@@ -132,7 +134,10 @@ const LeadDetail = () => {
     }
   };
 
-  const leadOwner = users.find(u => u.id === (lead.assignedTo?._id || lead.assignedTo));
+  // FIX: Use the lead's already populated assignedTo object for display (faster, more direct)
+  const leadOwner = lead.assignedTo 
+    ? { name: lead.assignedTo.name, id: lead.assignedTo._id || lead.assignedTo } 
+    : null;
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
