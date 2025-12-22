@@ -1,10 +1,10 @@
-// src/pages/Customers.jsx (Updated with all fields and validations)
+// src/pages/Customers.jsx (FINAL with Pagination, Dates, and Filtering)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerService } from '../services/api';
 import Modal from '../components/Modal';
-import { Plus, Search, Building, Mail, Phone, Edit2, Link as LinkIcon, User as UserIcon } from 'lucide-react';
+import { Plus, Search, Building, Mail, Phone, Edit2, Link as LinkIcon, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const Customers = () => {
@@ -14,6 +14,10 @@ const Customers = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
 
+    // --- Pagination State ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [limit, setLimit] = useState(10); // Default to 10 items per page
+
     // FR-27 Fields defined in Customer Model
     const initialFormState = {
         name: '', email: '', phone: '', primaryContact: '', address: '', industry: '', website: '', billingInfo: ''
@@ -21,18 +25,20 @@ const Customers = () => {
     const [formData, setFormData] = useState(initialFormState);
 
     // Fetch Customers (7.1)
-    const { data: customers = [], isLoading: loadingCustomers } = useQuery({
-        queryKey: ['customers', { searchTerm }],
-        queryFn: () => customerService.getCustomers({ search: searchTerm }),
-        placeholderData: [],
+    const { data: customersData, isLoading: loadingCustomers, isFetching } = useQuery({
+        queryKey: ['customers', { searchTerm, currentPage, limit }],
+        queryFn: () => customerService.getCustomers({ search: searchTerm, page: currentPage, limit: limit }),
+        placeholderData: (previousData) => previousData,
+        keepPreviousData: true,
     });
+
+    const customers = customersData?.data || [];
+    const totalCustomers = customersData?.total || 0;
+    const totalPages = Math.ceil(totalCustomers / limit);
 
     // Mutation for Add/Edit (7.2, 7.4)
     const customerMutation = useMutation({
         mutationFn: (data) => {
-            // Note: If creating manually (7.2), the API expects the owner to be set.
-            // If the backend doesn't automatically assign the logged-in user, 
-            // we should manually add: ...data, owner: user.id 
             const payload = { ...data, owner: data.owner || user.id }; 
             
             return editingCustomer 
@@ -67,17 +73,18 @@ const Customers = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        // Add basic required field validation here if necessary
         customerMutation.mutate(formData);
     };
 
-    const isLoading = loadingCustomers || customerMutation.isPending;
+    const isLoading = loadingCustomers || isFetching || customerMutation.isPending;
     const canCreateManual = user.role === 'admin' || user.role === 'manager';
 
     return (
         <div className="p-8 max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Customer Management</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">Customer Management ({totalCustomers})</h2>
                     <p className="text-slate-500 mt-1">Confirmed clients converted from WON deals.</p>
                 </div>
                 {canCreateManual && (
@@ -105,9 +112,9 @@ const Customers = () => {
 
             {/* Customer List Table */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                {isLoading ? (
-                    <div className="p-12 text-center text-slate-500">Loading customers...</div>
-                ) : customers.length === 0 ? (
+                {isLoading && <div className="p-12 text-center text-slate-500">Loading customers...</div>}
+                
+                {!isLoading && customers.length === 0 ? (
                     <div className="p-12 text-center text-slate-500">No customers found.</div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -118,6 +125,7 @@ const Customers = () => {
                                     <th className="px-6 py-4">Primary Contact</th>
                                     <th className="px-6 py-4">Contact Info</th>
                                     <th className="px-6 py-4">Website</th>
+                                    <th className="px-6 py-4">Dates</th> {/* NEW COLUMN */}
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -150,6 +158,11 @@ const Customers = () => {
                                                 </a>
                                             ) : '-'}
                                         </td>
+                                        {/* Dates Column */}
+                                        <td className="px-6 py-4 text-xs text-slate-500">
+                                            <p>Converted: {new Date(c.convertedDate).toLocaleDateString()}</p>
+                                            <p>Updated: {new Date(c.updatedAt).toLocaleDateString()}</p>
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <button 
                                                 onClick={() => handleOpenModal(c)}
@@ -166,7 +179,39 @@ const Customers = () => {
                 )}
             </div>
 
-            {/* Modal for Add/Edit Customer (FR-27) */}
+            {/* Pagination Controls */}
+            <div className="flex justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                <p className="text-sm text-slate-600">
+                    Showing {Math.min(totalCustomers, (currentPage - 1) * limit + 1)} - {Math.min(totalCustomers, currentPage * limit)} of {totalCustomers} customers
+                </p>
+                <div className="flex items-center gap-4">
+                     <select
+                        value={limit}
+                        onChange={(e) => { setLimit(Number(e.target.value)); setCurrentPage(1); }}
+                        className="rounded-lg border border-slate-300 text-sm py-1"
+                        disabled={isLoading}
+                    >
+                        {[10, 20, 50].map(l => <option key={l} value={l}>{l} per page</option>)}
+                    </select>
+                    <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1 || isLoading}
+                        className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+                    <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages || isLoading || totalCustomers === 0}
+                        className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                </div>
+            </div>
+
+
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCustomer ? 'Edit Customer' : 'Add New Customer (7.2)'}>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     
