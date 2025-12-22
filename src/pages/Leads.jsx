@@ -1,4 +1,4 @@
-// src/pages/Leads.jsx (FINAL WITH PAGINATION, DATES, AND OWNER FIX)
+// src/pages/Leads2.jsx (FINAL WITH PAGINATION, DATES, AND OWNER FIX)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,6 +19,7 @@ const ImportModal = ({ isOpen, onClose }) => {
             setUploading(true);
             const formData = new FormData();
             formData.append('file', file);
+            // Simulating real FormData submission to the backend API endpoint
             return leadService.importLeads(formData); 
         },
         onSuccess: (data) => {
@@ -91,20 +92,21 @@ const Leads = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(10); // Changed default to 10 for better pagination testing
 
-  const initialFormState = { name: '', email: '', phone: '', company: '', status: 'new', source: 'website', budget: 0, assignedTo: '', city: '', description: '' };
+  const initialFormState = { name: '', email: '', phone: '', company: '', status: 'new', source: 'website', budget: 0, assignedTo: '', city: '', description: '', customSourceDetail: '' };
   const [formData, setFormData] = useState(initialFormState);
 
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState({ status: '', source: '', assignedTo: '' });
   
-  // Keep users query for the ASSIGNMENT DROPDOWN in the modal
+  // Fetch users for ASSIGNMENT dropdown and filtering lookups (minimal fields)
   const { data: userData, isLoading: loadingUsers } = useQuery({ 
     queryKey: ['users'], 
-    queryFn: () => userService.getUsers({ limit: 100 }).then(res => res.data), // Fetch enough users for dropdown
-    select: (response) => response.data || []
+    queryFn: () => userService.getUsers({ limit: 100 }).then(res => res.data),
+    select: (response) => response.data || [] // CRITICAL: Extract array data
   });
   const users = userData || [];
 
+  // Fetch Leads with Pagination/Filters
   const { data: leadsData, isLoading: loadingLeads, isFetching } = useQuery({
     queryKey: ['leads', { searchTerm, filters: activeFilters, currentPage, limit }],
     queryFn: () => leadService.getLeads({ 
@@ -137,8 +139,20 @@ const Leads = () => {
 
   const exportMutation = useMutation({
     mutationFn: (filters) => leadService.exportLeads(filters),
-    onSuccess: (data) => { /* ... */ },
-    onError: (error) => { alert("Export failed: Server error or unauthorized."); },
+    onSuccess: (data) => {
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `leads_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      alert("Export successful.");
+    },
+    onError: (error) => {
+        alert("Export failed: Server error or unauthorized.");
+    },
   });
 
   const handleExport = () => { exportMutation.mutate({ search: searchTerm, ...activeFilters }); };
@@ -158,13 +172,16 @@ const Leads = () => {
       setEditingId(lead.id);
       
       const assignedId = lead.assignedTo ? (lead.assignedTo._id || lead.assignedTo) : '';
+      const customSourceDetail = lead.source === 'other' ? (lead.description || '').split('Custom Source: ')[1] || '' : '';
+
 
       setFormData({
         name: lead.name, email: lead.email, phone: lead.phone, company: lead.company, 
         status: lead.status, source: lead.source, budget: lead.budget || 0, 
         assignedTo: assignedId, 
         city: lead.city || '', 
-        description: lead.description || ''
+        description: lead.description || '',
+        customSourceDetail: customSourceDetail
       });
     } else {
       setEditingId(null);
@@ -192,7 +209,7 @@ const Leads = () => {
         description: finalDescription,
         assignedTo: formData.assignedTo || user.id
     };
-    delete payload.customSourceDetail;
+    delete payload.customSourceDetail; // Clean up temp field
 
     leadMutation.mutate(payload);
   };
@@ -214,7 +231,7 @@ const Leads = () => {
   };
 
   const currentLeads = leads || [];
-  const isLoading = loadingLeads || isFetching || leadMutation.isPending || exportMutation.isPending || deleteMutation.isPending;
+  const isLoading = loadingLeads || isFetching || loadingUsers || leadMutation.isPending || exportMutation.isPending || deleteMutation.isPending;
 
   const canDelete = user.role === 'admin' || user.role === 'manager';
 
@@ -254,15 +271,88 @@ const Leads = () => {
       </div>
       
       <div className="space-y-4 mb-6">
-        {/* ... (Filter UI) ... */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center">
+          <div className="relative w-full sm:w-96">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search by name or company..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+            />
+          </div>
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
+              showFilters ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Filter size={16} />
+            Filters
+            {(activeFilters.status || activeFilters.source || activeFilters.assignedTo) && (
+              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+            )}
+          </button>
+        </div>
+
+        {showFilters && (
+          <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in slide-in-from-top-2">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-sm font-bold text-slate-700">Filter Leads</h3>
+               <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1">
+                 <X size={12} /> Clear all
+               </button>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <div>
+                 <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
+                 <select 
+                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                   value={activeFilters.status}
+                   onChange={(e) => setActiveFilters({...activeFilters, status: e.target.value})}
+                 >
+                   <option value="">All Statuses</option>
+                   {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
+                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                   ))}
+                 </select>
+               </div>
+               <div>
+                 <label className="block text-xs font-semibold text-slate-500 mb-1">Source</label>
+                 <select 
+                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                   value={activeFilters.source}
+                   onChange={(e) => setActiveFilters({...activeFilters, source: e.target.value})}
+                 >
+                   <option value="">All Sources</option>
+                   {['website', 'referral', 'call', 'other'].map(s => (
+                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                   ))}
+                 </select>
+               </div>
+               <div>
+                 <label className="block text-xs font-semibold text-slate-500 mb-1">Assigned User</label>
+                 <select 
+                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                   value={activeFilters.assignedTo}
+                   onChange={(e) => setActiveFilters({...activeFilters, assignedTo: e.target.value})}
+                 >
+                   <option value="">All Users</option>
+                   {users.map(u => (
+                     <option key={u.id} value={u.id}>{u.name}</option>
+                   ))}
+                 </select>
+               </div>
+             </div>
+          </div>
+        )}
       </div>
 
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {isLoading && <div className="p-12 text-center text-slate-500">Loading leads data...</div>}
-        
-        {!isLoading && currentLeads.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">No leads found.</div>
+        {isLoading ? (
+          <div className="p-12 text-center text-slate-500">Loading leads data...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -388,7 +478,7 @@ const Leads = () => {
                 })}
                 {currentLeads.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500"> {/* Updated colspan to 7 */}
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                        {searchTerm || activeFilters.status || activeFilters.source || activeFilters.assignedTo ? (
                         <div className="flex flex-col items-center justify-center">
                           <Search size={48} className="text-slate-200 mb-4" />
@@ -407,40 +497,6 @@ const Leads = () => {
         )}
       </div>
 
-      {/* Pagination Controls */}
-      <div className="flex justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
-        <p className="text-sm text-slate-600">
-            Showing {Math.min(totalLeads, (currentPage - 1) * limit + 1)} - {Math.min(totalLeads, currentPage * limit)} of {totalLeads} leads
-        </p>
-        <div className="flex items-center gap-4">
-             <select
-                value={limit}
-                onChange={(e) => { setLimit(Number(e.target.value)); setCurrentPage(1); }}
-                className="rounded-lg border border-slate-300 text-sm py-1"
-                disabled={isLoading}
-            >
-                {[10, 20, 50].map(l => <option key={l} value={l}>{l} per page</option>)}
-            </select>
-            <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1 || isLoading}
-                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-            >
-                <ChevronLeft size={16} />
-            </button>
-            <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
-            <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages || isLoading || totalLeads === 0}
-                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-            >
-                <ChevronRight size={16} />
-            </button>
-        </div>
-      </div>
-
-
-      {/* Lead Create/Edit Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Edit Lead" : "Create New Lead"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           
