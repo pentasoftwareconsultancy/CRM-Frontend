@@ -180,7 +180,7 @@ const Reports = () => {
                   <YAxis dataKey="name" type="category" width={100} tick={{fill: '#64748b', fontSize: 12}} axisLine={false} tickLine={false} />
                   <Tooltip cursor={cursorStyle} contentStyle={tooltipStyle} />
                   <Legend />
-                  <Bar dataKey="assignedLeads" name="Assigned Leads" fill="#94a3b8" barSize={20} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="assignedLeads" name="Assigned Leads" fill="#4457c7" barSize={20} radius={[0, 4, 4, 0]} />
                   <Bar dataKey="wonDeals" name="Deals Won" fill="#10b981" barSize={20} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
