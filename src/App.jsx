@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import AdminUsers from './pages/AdminUsers';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
+import Notifications from './pages/Notifications';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query'; // Import QueryClient for context
 import Customers from './pages/Customers'; // Import the new component
 
@@ -57,6 +58,7 @@ const App = () => {
           <main className="flex-1 overflow-auto bg-slate-50/50">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/leads" element={<Leads />} />
               <Route path="/leads/:id" element={<LeadDetail />} />
               <Route path="/pipeline" element={<Pipeline />} />
