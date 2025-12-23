@@ -45,7 +45,7 @@ const NewDealModal = ({ isOpen, onClose }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Create New Deal (4.2)">
+        <Modal isOpen={isOpen} onClose={onClose} title="Create New Deal">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Select Lead *</label>

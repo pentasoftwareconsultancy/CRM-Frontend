@@ -4,7 +4,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService, leadService } from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { DollarSign, Users, TrendingUp, Target, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { IndianRupeeIcon, Users, TrendingUp, Target, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 // Helper to calculate percentage change (remains the same)
 const calculateTrend = (current, previous) => {
@@ -80,7 +80,7 @@ const Dashboard = () => {
         <KpiCard 
           title="Won Revenue (30 Days)" 
           value={`₹${(stats?.totalRevenue || 0).toLocaleString()}`} 
-          icon={DollarSign} 
+          icon={IndianRupeeIcon} 
           trend={revenueTrend.trend} 
           trendUp={revenueTrend.trendUp} 
           color="bg-blue-500"

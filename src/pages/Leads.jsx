@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leadService, userService } from '../services/api';
 import Modal from '../components/Modal';
-import { Plus, Search, Filter, Mail, Phone, MapPin, DollarSign, X, Eye, Edit2, Upload, Download, MessageSquare, AlertCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, Mail, Phone, MapPin, IndianRupeeIcon, X, Eye, Edit2, Upload, Download, MessageSquare, AlertCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
@@ -354,9 +354,9 @@ const Leads = () => {
                   <th className="px-6 py-4">Contact</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Budget</th>
-                  <th className="px-6 py-4">Owner (FR-9)</th> 
+                  <th className="px-6 py-4">Owner</th> 
                   <th className="px-6 py-4">Dates</th> 
-                  <th className="px-6 py-4 text-right">Actions (FR-11)</th>
+                  <th className="px-6 py-4 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -394,7 +394,7 @@ const Leads = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1 text-slate-700 font-medium">
-                          <DollarSign size={14} className="text-slate-400" />
+                          <IndianRupeeIcon size={14} className="text-slate-400" />
                           {lead.budget?.toLocaleString()}
                         </div>
                         {lead.city && (
