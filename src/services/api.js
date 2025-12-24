@@ -59,6 +59,11 @@ export const userService = {
     const res = await apiService.delete(`/users/${id}`);
     return res.data;
   },
+   
+  updateProfile: async (profileData) => {
+    const res = await apiService.put('/users/profile', profileData);
+    return res.data;
+  },
 };
 
 // --- Lead Management (3.0) ---

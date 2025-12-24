@@ -63,6 +63,7 @@ const Profile = ({ currentUser }) => {
 
       setStatus({ type: "success", message: "Profile updated successfully" });
     } catch (err) {
+      console.error(err);
       setStatus({ type: "error", message: "Failed to update profile" });
     }
   };

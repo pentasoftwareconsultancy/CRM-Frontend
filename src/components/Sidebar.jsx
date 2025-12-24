@@ -31,7 +31,7 @@ const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed }) => {
         {!isCollapsed && (
           <div className="animate-in fade-in duration-500">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent whitespace-nowrap">
-              NexusCRM
+              SmartCRM
             </h1>
             <p className="text-xs text-slate-400 mt-1 whitespace-nowrap">Enterprise Solution</p>
           </div>
