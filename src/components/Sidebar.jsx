@@ -53,7 +53,7 @@ const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed }) => {
             title={isCollapsed ? item.name : ""}
             className={({ isActive }) =>
               `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
-                ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                ? 'bg-blue-700 text-white shadow-lg shadow-blue'
                 : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`
             }
