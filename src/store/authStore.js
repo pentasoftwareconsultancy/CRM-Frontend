@@ -1,41 +1,10 @@
-// src/store/authStore.js
-
 import { create } from 'zustand';
-import { authService } from '../services/api';
+import { authService, userService } from '../services/api';
 
-// Zustand Middleware to persist user state (basic storage)
-const createAuthStore = (set) => ({
-  user: JSON.parse(localStorage.getItem('user') || 'null'), // Initial state from storage
-  
-  login: async (email, password) => {
-    try {
-      const userData = await authService.login(email, password);
-      set({ user: userData });
-      localStorage.setItem('user', JSON.stringify(userData));
-      return userData;
-    } catch (error) {
-      throw error;
-    }
-  },
-  
-  logout: async () => {
-    await authService.logout();
-    set({ user: null });
-    localStorage.removeItem('user');
-  },
-  
-  updateUser: (updates) => {
-    set((state) => {
-      const updatedUser = { ...state.user, ...updates };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      return { user: updatedUser };
-    });
-  },
-});
-
-// Create the store using a function wrapper for persistence/hydration
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
+    // Initialize user from localStorage
     user: JSON.parse(localStorage.getItem('user') || 'null'),
+
     login: async (email, password) => {
         try {
             const userData = await authService.login(email, password);
@@ -46,16 +15,33 @@ export const useAuthStore = create((set) => ({
             throw error;
         }
     },
+
     logout: async () => {
         await authService.logout();
         set({ user: null });
         localStorage.removeItem('user');
     },
-    updateUser: (updates) => {
-      set((state) => {
-        const updatedUser = { ...state.user, ...updates };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        return { user: updatedUser };
-      });
+
+    // This handles the FormData (name + avatar file)
+    updateUser: async (formData) => {
+        try {
+            // Use the userService we defined in api.js
+            // This ensures the JWT interceptor is used automatically
+            const updatedData = await userService.updateProfile(formData);
+
+            // Get current user to keep the token in the object
+            const currentUser = get().user;
+
+            // Merge new data (name/avatar) with existing data (token)
+            const newUserState = { ...currentUser, ...updatedData };
+
+            set({ user: newUserState });
+            localStorage.setItem('user', JSON.stringify(newUserState));
+            
+            return newUserState;
+        } catch (error) {
+            console.error("Store update error:", error);
+            throw error;
+        }
     },
 }));

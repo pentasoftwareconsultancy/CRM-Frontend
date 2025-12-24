@@ -23,50 +23,44 @@ const Profile = ({ currentUser }) => {
 
   const [loadingImage, setLoadingImage] = useState(false);
   const [status, setStatus] = useState(null);
-
+  const [selectedFile, setSelectedFile] = useState(null);
   /* ---------------- Image Upload Logic ---------------- */
-  const handleImageChange = (e) => {
+const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validation: Only allow images under 2MB (if using Base64)
-    if (file.size > 2000000) {
-      setStatus({ type: "error", message: "Image must be less than 2MB" });
-      return;
-    }
+    setSelectedFile(file); // Store the raw file for the API call
 
-    setLoadingImage(true);
-
-    // To store in MongoDB without a dedicated file server, 
-    // we convert the image to a Base64 String
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onloadend = () => {
-      setForm((p) => ({ ...p, avatar: reader.result }));
-      setLoadingImage(false);
-      setStatus({ type: "success", message: "Photo uploaded. Don't forget to Save Changes!" });
-    };
-  };
+    // For local preview only
+    const preview = URL.createObjectURL(file);
+    setForm((p) => ({ ...p, avatar: preview }));
+};
 
   /* ---------------- Save to Backend ---------------- */
-  const handleSave = async (e) => {
+const handleSave = async (e) => {
     e.preventDefault();
     setStatus(null);
+    setLoadingImage(true);
 
     try {
-      // This calls your Zustand store, which should perform an axios.put to /api/users/profile
-      await updateUser({
-        name: form.name,
-        avatar: form.avatar,
-        // currentPassword and newPassword would go here if you implemented password logic
-      });
+        // Use FormData instead of JSON
+        const formData = new FormData();
+        formData.append("name", form.name);
+        
+        if (selectedFile) {
+            formData.append("avatar", selectedFile);
+        }
 
-      setStatus({ type: "success", message: "Profile updated successfully" });
+        // Send formData to your store function
+        await updateUser(formData); 
+
+        setStatus({ type: "success", message: "Profile saved successfully" });
     } catch (err) {
-      console.error(err);
-      setStatus({ type: "error", message: "Failed to update profile" });
+        setStatus({ type: "error", message: "Failed to update profile" });
+    } finally {
+        setLoadingImage(false);
     }
-  };
+};
 
   return (
     <div className="max-w-5xl mx-auto p-8 font-sans">
