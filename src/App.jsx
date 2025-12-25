@@ -26,8 +26,9 @@ const App = () => {
   const { user, logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
   
-  // 1. ADD STATE HERE
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // 1. Rename to isSidebarOpen to better reflect mobile/desktop state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false); // New state for desktop collapse
 
   useEffect(() => {
     setLoading(false);
@@ -41,20 +42,36 @@ const App = () => {
 
   if (!user) return <Login />;
 
+  const contentMarginClass = isCollapsed ? 'lg:ml-20' : 'lg:ml-64';
+
   return (
     <Router>
       <div className="flex bg-slate-50 min-h-screen font-sans">
-        {/* 2. Pass state to Sidebar */}
+        
+        {/* Mobile Overlay */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 z-50 bg-black/50 lg:hidden" 
+            onClick={() => setIsSidebarOpen(false)}
+          ></div>
+        )}
+
         <Sidebar 
           onLogout={handleLogout} 
           userRole={user.role} 
+          
+          // Use isSidebarOpen for mobile drawer logic
+          isMobileOpen={isSidebarOpen} 
+          setIsMobileOpen={setIsSidebarOpen}
+
+          // Use isCollapsed for desktop collapse logic
           isCollapsed={isCollapsed} 
           setIsCollapsed={setIsCollapsed} 
         />
 
-        {/* 3. Dynamic Margin: ml-20 when collapsed, ml-64 when expanded */}
-        <div className={`flex-1 flex flex-col transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
-          <TopBar user={user} />
+        {/* Main Content Area */}
+        <div className={`flex-1 flex flex-col transition-all duration-300 ${contentMarginClass} ml-0`}>
+          <TopBar user={user} onMenuClick={() => setIsSidebarOpen(true)} />
           <main className="flex-1 overflow-auto bg-slate-50/50">
             <Routes>
               <Route path="/" element={<Dashboard />} />
