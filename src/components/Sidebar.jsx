@@ -4,11 +4,10 @@ import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Trello, BarChart3, 
   LogOut, Shield, CalendarClock, IndianRupeeIcon,
-  ChevronLeft, Menu 
+  ChevronLeft, Menu, X 
 } from 'lucide-react';
 
-const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed }) => {
-  // Local state removed - now using props
+const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
 
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard },
@@ -22,26 +21,51 @@ const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed }) => {
   if (userRole === 'admin') {
     navItems.push({ name: 'Team', to: '/admin/users', icon: Shield });
   }
+  
+  const showFullContent = !isCollapsed || isMobileOpen;
+
+  const handleNavLinkClick = () => {
+    if (isMobileOpen) {
+      setIsMobileOpen(false);
+    }
+  };
 
   return (
-    <div className={`h-screen bg-slate-900 text-white flex flex-col fixed left-0 top-0 shadow-xl z-50 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <div 
+      className={`h-screen bg-slate-900 text-white flex flex-col fixed left-0 top-0 shadow-xl z-50 transition-all duration-300 
+      ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+      w-0 overflow-hidden ${isMobileOpen ? 'w-64 translate-x-0' : '-translate-x-full'}
+      lg:w-auto lg:translate-x-0 lg:left-0`}
+    >
       
       {/* Header Area */}
-      <div className="p-6 border-b border-slate-800 flex items-center justify-between overflow-hidden">
-        {!isCollapsed && (
-          <div className="animate-in fade-in duration-500">
+      <div className="p-6 border-b border-slate-800 flex items-center justify-between lg:w-full">
+        {showFullContent && (
+          <div className="lg:w-auto w-40 animate-in fade-in duration-500">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent whitespace-nowrap">
               SmartCRM
             </h1>
             <p className="text-xs text-slate-400 mt-1 whitespace-nowrap">Enterprise Solution</p>
           </div>
         )}
+        
+        {/* Desktop Collapse Button - ALWAYS visible on desktop */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+          className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors hidden lg:block"
         >
           {isCollapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
         </button>
+        
+        {/* Mobile Close Button - Only visible when mobile is open */}
+        {isMobileOpen && (
+          <button 
+            onClick={() => setIsMobileOpen(false)}
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors lg:hidden"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -50,19 +74,29 @@ const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed }) => {
           <NavLink
             key={item.name}
             to={item.to}
-            title={isCollapsed ? item.name : ""}
+            title={isCollapsed && !isMobileOpen ? item.name : ""}
+            onClick={handleNavLinkClick}
             className={({ isActive }) =>
-              `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
+              `group flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
                 ? 'bg-blue-700 text-white shadow-lg shadow-blue'
                 : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`
+              }
+              ${isCollapsed && !isMobileOpen ? 'lg:justify-center' : ''}
+              `
             }
           >
             <item.icon size={20} className="min-w-[20px]" />
-            {!isCollapsed && (
-              <span className="font-medium whitespace-nowrap animate-in slide-in-from-left-2 duration-300">
+            
+            {showFullContent && (
+              <span className="font-medium whitespace-nowrap">
                 {item.name}
               </span>
+            )}
+            
+            {isCollapsed && !isMobileOpen && (
+                 <span className="absolute left-full ml-4 px-3 py-1 bg-slate-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap hidden lg:block pointer-events-none">
+                    {item.name}
+                 </span>
             )}
           </NavLink>
         ))}
@@ -72,10 +106,11 @@ const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed }) => {
       <div className="p-4 border-t border-slate-800">
         <button
           onClick={onLogout}
-          className="flex items-center gap-4 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 w-full rounded-lg transition-colors overflow-hidden"
+          className={`flex items-center gap-4 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 w-full rounded-lg transition-colors overflow-hidden 
+          ${isCollapsed && !isMobileOpen ? 'lg:justify-center' : ''}`}
         >
           <LogOut size={20} className="min-w-[20px]" />
-          {!isCollapsed && (
+          {showFullContent && (
             <span className="font-medium whitespace-nowrap">Sign Out</span>
           )}
         </button>
