@@ -91,7 +91,7 @@ const FollowUps = () => {
     // Non-completed logic
     if (f.status === 'completed') return false; 
     
-    const isOverdue = f.status === 'Overdue';
+    const isOverdue = f.isOverdue || "overdue" === f.status?.toLocaleLowerCase();
     
     if (activeTab === 'overdue') return isOverdue;
 
