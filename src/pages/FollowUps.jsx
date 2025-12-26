@@ -1,3 +1,5 @@
+// src/pages/FollowUps.jsx (Finalized Logic)
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { activityService, leadService, userService } from '../services/api';
@@ -6,7 +8,7 @@ import Modal from '../components/Modal';
 
 const FollowUps = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('pending'); // Use 'pending' for upcoming/overdue
+  const [activeTab, setActiveTab] = useState('pending'); // pending|overdue|completed
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState('');
   
@@ -28,27 +30,56 @@ const FollowUps = () => {
     queryKey: ['users'],
     queryFn: () => userService.getUsers({ limit: 100 }).then(res => res.data),
   });
+  
+  // Determine DB query status based on activeTab
+  const statusQuery = (activeTab === 'pending' || activeTab === 'overdue') ? 'pending' : 'completed';
 
   // Fetch Follow-Ups (PAGED)
   const { data: followUpsData, isLoading: loadingFollowUps, isFetching } = useQuery({
-    queryKey: ['followups', activeTab, currentPage, limit],
+    queryKey: ['followups', statusQuery, currentPage, limit],
     queryFn: () => activityService.getFollowUps({ 
-        status: activeTab === 'completed' ? 'completed' : 'pending',
+        status: statusQuery,
         page: currentPage, 
         limit: limit 
     }),
     keepPreviousData: true,
   });
 
-  const followUps = followUpsData?.data || [];
-  const totalFollowUps = followUpsData?.total || 0;
-  const totalPages = Math.ceil(totalFollowUps / limit);
+  // --- Counting Logic (Fetches all relevant tasks for accurate count) ---
+  const { data: allFollowUpsForCounts = [] } = useQuery({
+    queryKey: ['allFollowUpsForCounts'],
+    queryFn: () => activityService.getFollowUps({ status: 'pending|completed', limit: 1000 }).then(res => res.data),
+    staleTime: 60000 
+  });
+  
+  const counts = allFollowUpsForCounts.reduce((acc, f) => {
+    // Note: f.status is now the dynamically derived status (pending, overdue, completed)
+    acc[f.status] = (acc[f.status] || 0) + 1;
+    return acc;
+  }, { pending: 0, overdue: 0, completed: 0 });
 
-  // --- Mutations ---
+
+  // --- Filtering Logic ---
+  // We filter the paginated data based on the derived status
+  const followUps = followUpsData?.data || [];
+  const totalFollowUps = followUpsData?.total || 0; // Note: Total refers to the count of the base query (pending OR completed)
+
+  const filteredData = followUps.filter(f => f.status === activeTab);
+  
+  // When switching tabs between pending/overdue/completed, we need to reset pagination,
+  // but also re-evaluate the total count based on the new active tab's overall count.
+  // Since totalFollowUps only reflects the base DB query ('pending' or 'completed'), 
+  // we use the local 'counts' for accurate display totals.
+  const displayTotal = counts[activeTab] || 0;
+  const totalPages = Math.ceil(displayTotal / limit);
+  // We must re-evaluate pagination context if the total count changes based on the tab
+  
+  // --- Mutations (Omitted for brevity, they remain the same) ---
   const createFollowUpMutation = useMutation({
     mutationFn: (data) => activityService.createFollowUp(data.leadId, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['followups']);
+      queryClient.invalidateQueries(['allFollowUpsForCounts']); // Crucial for count update
       setIsModalOpen(false);
       setFormData(initialFormState);
       setError('');
@@ -62,6 +93,8 @@ const FollowUps = () => {
     mutationFn: (id) => activityService.completeFollowUp(id, { result: 'Completed successfully.' }),
     onSuccess: () => {
       queryClient.invalidateQueries(['followups']);
+      queryClient.invalidateQueries(['allFollowUpsForCounts']); // Crucial for count update
+      queryClient.invalidateQueries(['notifications_global_count']);
     },
     onError: (err) => {
       alert(`Failed to complete activity: ${err.response?.data?.message || err.message}`);
@@ -69,7 +102,7 @@ const FollowUps = () => {
   });
 
 
-  // --- Handlers ---
+  // --- Handlers (Omitted for brevity, they remain the same) ---
   const handleCreate = (e) => {
     e.preventDefault();
     if (!formData.leadId || !formData.scheduledAt) {
@@ -82,40 +115,6 @@ const FollowUps = () => {
     if (window.confirm('Mark this activity as complete?')) {
         completeFollowUpMutation.mutate(id);
     }
-  };
-
-  // --- Filtering Logic ---
-  const filteredData = followUps.filter(f => {
-    if (activeTab === 'completed') return f.status === 'completed';
-    
-    // Non-completed logic
-    if (f.status === 'completed') return false; 
-    
-    const isOverdue = f.isOverdue || "overdue" === f.status?.toLocaleLowerCase();
-    
-    if (activeTab === 'overdue') return isOverdue;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const scheduledDate = new Date(f.scheduledAt);
-
-    if (activeTab === 'today') {
-      return !isOverdue && scheduledDate >= today && scheduledDate < tomorrow;
-    }
-    if (activeTab === 'pending') { // Combines upcoming & today non-overdue
-      return !isOverdue && scheduledDate >= today;
-    }
-
-    return true; // Should not happen
-  });
-
-  const getTabCount = (tab) => {
-    if (tab === 'overdue') return followUps.filter(f => f.status === 'Overdue').length;
-    if (tab === 'completed') return followUps.filter(f => f.status === 'completed').length;
-    if (tab === 'pending') return followUps.filter(f => f.status === 'pending' && !f.isOverdue).length;
-    return 0; // Simplified
   };
   
   const getFollowUpTypeIcon = (type) => {
@@ -130,15 +129,16 @@ const FollowUps = () => {
   const isLoading = loadingLeads || loadingFollowUps || isFetching || createFollowUpMutation.isLoading || completeFollowUpMutation.isLoading;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    // Responsive padding
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Follow Ups</h2>
-          <p className="text-slate-500 mt-1">Stay on top of your customer interactions.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Follow Ups</h2>
+          <p className="text-sm text-slate-500 mt-1">Stay on top of your customer interactions.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2  bg-blue-900 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
+          className="flex items-center justify-center gap-2  bg-blue-900 hover:bg-blue-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/20"
           disabled={isLoading}
         >
           <Calendar size={18} />
@@ -146,22 +146,22 @@ const FollowUps = () => {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-slate-200">
+      {/* Tabs with Counts */}
+      <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto">
         {['pending', 'overdue', 'completed'].map(tab => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
+            onClick={() => { setActiveTab(tab); setCurrentPage(1); }} // Reset page on tab change
+            className={`px-3 py-3 text-sm font-medium capitalize border-b-2 transition-colors flex-shrink-0 ${
               activeTab === tab 
                 ? 'border-primary text-primary' 
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
             }`}
           >
             {tab}
-            {(tab === 'overdue' || tab === 'completed') && getTabCount(tab) > 0 && (
-              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${tab === 'overdue' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                {getTabCount(tab)}
+            {counts[tab] > 0 && (
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold border ${tab === 'overdue' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
+                {counts[tab]}
               </span>
             )}
           </button>
@@ -185,15 +185,16 @@ const FollowUps = () => {
                 const assignedUser = users.find(u => u.id === (item.assignedTo?._id || item.assignedTo));
 
                 return (
-                  <div key={item.id} className="p-5 hover:bg-slate-50 transition-colors flex items-center justify-between group">
-                    <div className="flex items-start gap-4">
-                      <div className={`mt-1 p-2 rounded-lg bg-slate-100 border border-slate-200`}>
+                  // Responsive item layout
+                  <div key={item.id} className="p-4 sm:p-5 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between group gap-3">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className={`mt-1 p-2 rounded-lg bg-slate-100 border border-slate-200 flex-shrink-0`}>
                         {getFollowUpTypeIcon(item.type)}
                       </div>
                       <div>
-                        <h4 className="font-semibold text-slate-800 flex items-center gap-2 capitalize">
+                        <h4 className="font-semibold text-slate-800 flex flex-wrap items-center gap-2 capitalize">
                           {item.type} with {associatedLead?.name || item.lead?.name || 'Unknown Lead'}
-                          {item.status === 'Overdue' && (
+                          {item.status === 'overdue' && (
                             <span className="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
                               <AlertCircle size={12} /> Overdue
                             </span>
@@ -203,14 +204,14 @@ const FollowUps = () => {
                           {new Date(item.scheduledAt).toLocaleString()}
                         </p>
                         {item.note && (
-                          <p className="text-sm text-slate-600 mt-2 bg-slate-50 p-2 rounded border border-slate-100 inline-block">
+                          <p className="text-sm text-slate-600 mt-2 bg-slate-50 p-2 rounded border border-slate-100 block sm:inline-block">
                             "{item.note}"
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
                       {item.status !== 'completed' && (
                         <button 
                           onClick={() => handleComplete(item.id)}
@@ -238,6 +239,39 @@ const FollowUps = () => {
         )}
       </div>
 
+      {/* Pagination Controls (Made responsive) */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200 gap-3">
+        <p className="text-sm text-slate-600">
+            Showing {Math.min(displayTotal, (currentPage - 1) * limit + 1)} - {Math.min(displayTotal, currentPage * limit)} of {displayTotal} activities
+        </p>
+        <div className="flex items-center gap-4">
+             <select
+                value={limit}
+                onChange={(e) => { setLimit(Number(e.target.value)); setCurrentPage(1); }}
+                className="rounded-lg border border-slate-300 text-sm py-1"
+                disabled={isLoading}
+            >
+                {[10, 20, 50].map(l => <option key={l} value={l}>{l} per page</option>)}
+            </select>
+            <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1 || isLoading}
+                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+                <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+            <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages || isLoading || displayTotal === 0}
+                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+                <ChevronRight size={16} />
+            </button>
+        </div>
+      </div>
+
+
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Schedule New Activity">
         <form onSubmit={handleCreate} className="space-y-4">
           {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -256,7 +290,7 @@ const FollowUps = () => {
             </select>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
               <select 
