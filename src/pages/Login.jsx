@@ -1,3 +1,5 @@
+// src/pages/Login.jsx (Finalized Login with Redirection)
+
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -9,9 +11,11 @@ import {
   Lock 
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const Login = () => {
   const { login } = useAuthStore();
+  const navigate = useNavigate(); // Initialize useNavigate
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +28,10 @@ const Login = () => {
 
     try {
       await login(email, password);
+      
+      // CRITICAL FIX: Navigate to the Dashboard (root path '/') upon successful login
+      navigate('/', { replace: true }); 
+
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed. Check credentials.';
       setError(errorMessage);
@@ -35,7 +43,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex bg-white font-sans">
       
-      {/* LEFT SIDE: Visual Design & Branding (Hidden on mobile) */}
+      {/* LEFT SIDE: Visual Design & Branding (Hidden on mobile) (omitted for brevity) */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12">
         
         {/* Background Decorative Elements */}
