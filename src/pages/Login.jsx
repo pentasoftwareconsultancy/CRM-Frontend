@@ -1,5 +1,4 @@
-// src/pages/Login.jsx (Finalized Login with Redirection)
-
+// src/pages/Login.jsx (FINAL)
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -11,25 +10,32 @@ import {
   Lock 
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const { login } = useAuthStore();
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate(); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); 
     setIsLoading(true);
     setError('');
 
     try {
+      // --- Client-Side Validation ---
+      if (password.length < 6) { 
+         setError('Password must be at least 6 characters long.');
+         setIsLoading(false);
+         return;
+      }
+      
       await login(email, password);
       
-      // CRITICAL FIX: Navigate to the Dashboard (root path '/') upon successful login
+      // Navigate to the Dashboard upon successful login
       navigate('/', { replace: true }); 
 
     } catch (err) {
@@ -43,7 +49,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex bg-white font-sans">
       
-      {/* LEFT SIDE: Visual Design & Branding (Hidden on mobile) (omitted for brevity) */}
+      {/* LEFT SIDE: Visual Design & Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12">
         
         {/* Background Decorative Elements */}
@@ -159,7 +165,7 @@ const Login = () => {
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Password</label>
-                {/* <a href="#" className="text-xs font-bold text-blue-600 hover:text-blue-700">Forgot?</a> */}
+                {/* Forgot link intentionally commented out */}
               </div>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
@@ -168,6 +174,7 @@ const Login = () => {
                 <input
                   type="password"
                   required
+                  minLength="6"
                   className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-800"
                   placeholder="••••••••"
                   value={password}

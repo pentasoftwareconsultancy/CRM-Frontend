@@ -1,10 +1,10 @@
-// src/pages/AdminUsers.jsx (FINAL FIX)
+// src/pages/AdminUsers.jsx (Final)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../services/api';
 import Modal from '../components/Modal';
-import { UserPlus, Search, Edit2, Trash2, Shield, ShieldCheck, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UserPlus, Search, Edit2, Trash2, Shield, ShieldCheck, User as UserIcon, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const AdminUsers = () => {
@@ -39,7 +39,6 @@ const AdminUsers = () => {
     keepPreviousData: true,
   });
   
-  // CRITICAL FIX: Extract the data array from the paged response
   const users = usersData?.data || [];
   const totalUsers = usersData?.total || 0;
   const totalPages = Math.ceil(totalUsers / limit);
@@ -55,6 +54,7 @@ const AdminUsers = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['adminUsers']);
+      queryClient.invalidateQueries(['notifications_global_count']); 
       setIsModalOpen(false);
       setEditingUser(null);
       setError('');
@@ -85,7 +85,7 @@ const AdminUsers = () => {
         role: user.role, 
         status: user.status,
         designation: user.designation || '',
-        password: '' // Password should never be pre-filled/sent back
+        password: ''
       });
     } else {
       setEditingUser(null);
@@ -96,6 +96,13 @@ const AdminUsers = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setError('');
+
+    // --- Client-Side Validation ---
+    if (!formData.name || !formData.designation) {
+        return setError('Full Name and Designation are required.');
+    }
+
     const payload = { 
         name: formData.name, 
         role: formData.role, 
@@ -107,9 +114,19 @@ const AdminUsers = () => {
         if (!formData.email || !formData.password) {
             return setError('Email and Password are required for new users.');
         }
+        if (formData.password.length < 6) {
+            return setError('Password must be at least 6 characters long.');
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+             return setError('Please enter a valid email address.');
+        }
+        
         payload.email = formData.email;
         payload.password = formData.password;
     }
+    // --- End Validation ---
     
     userMutation.mutate(payload);
   };
@@ -121,7 +138,6 @@ const AdminUsers = () => {
   };
 
   // --- UI Helpers ---
-  // Line 107 in your previous trace: users.filter is now correct as 'users' is an array
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -137,16 +153,17 @@ const AdminUsers = () => {
   const isLoading = loadingUsers || isFetching || userMutation.isPending || deactivateMutation.isPending;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    // Responsive padding
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Team Management ({totalUsers})</h2> {/* Display total */}
-          <p className="text-slate-500 mt-1">Manage user access and roles.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Team Management ({totalUsers})</h2>
+          <p className="text-sm text-slate-500 mt-1">Manage user access and roles.</p>
         </div>
         {user.role === 'admin' && (
             <button 
                 onClick={() => handleOpenModal()}
-                className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
+                className="flex items-center justify-center gap-2 bg-blue-900 hover:bg-blue-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/20"
                 disabled={isLoading}
             >
                 <UserPlus size={18} />
@@ -177,14 +194,15 @@ const AdminUsers = () => {
             <div className="p-12 text-center text-slate-500">No users found.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            {/* MIN-W FIX APPLIED */}
+            <table className="w-full min-w-[850px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-4">User</th>
                   <th className="px-6 py-4">Role</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Designation</th>
-                  <th className="px-6 py-4">Dates</th> {/* Dates Column Header */}
+                  <th className="px-6 py-4">Dates</th> 
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -196,7 +214,7 @@ const AdminUsers = () => {
                         <img 
                           src={u.avatar || `https://ui-avatars.com/api/?name=${u.name.replace(' ', '+')}&background=random`} 
                           alt={u.name} 
-                          className="w-10 h-10 rounded-full border border-slate-200" 
+                          className="w-10 h-10 rounded-full border border-slate-200 flex-shrink-0" 
                         />
                         <div>
                           <p className="font-semibold text-slate-800">{u.name}</p>
@@ -255,8 +273,8 @@ const AdminUsers = () => {
         )}
       </div>
 
-      {/* Pagination Controls */}
-      <div className="flex justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+      {/* Pagination Controls (made responsive) */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200 gap-3">
         <p className="text-sm text-slate-600">
             Showing {Math.min(totalUsers, (currentPage - 1) * limit + 1)} - {Math.min(totalUsers, currentPage * limit)} of {totalUsers} users
         </p>
@@ -287,69 +305,72 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      {/* Modal for Add/Edit User (omitted for brevity) */}
+      {/* Modal for Add/Edit User */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         title={editingUser ? 'Edit User' : 'Add New User'}
       >
-        {/* ... (Modal form content remains the same) ... */}
-        {/* Note: Ensure the form field handlers and submission logic are correct */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">{error}</div>
-          )}
-          
-          {/* General Fields */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-            <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Designation</label>
-            <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} />
-          </div>
+        <div className="max-w-xl mx-auto">
+            <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+                <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                </div>
+            )}
+            
+            {/* General Fields */}
+            <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
+                <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            </div>
+            
+            <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Designation *</label>
+                <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} />
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                <option value="sales">Sales Executive</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-              <select disabled={!editingUser} className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize disabled:bg-slate-100" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-          
-          {/* Fields for NEW users */}
-          {!editingUser && (
-             <div className="grid grid-cols-2 gap-4 border-t pt-4 border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Email (New)</label>
-                    <input required type="email" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                    <option value="sales">Sales Executive</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Password (New)</label>
-                    <input required type="password" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <select disabled={!editingUser} className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize disabled:bg-slate-100" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
                 </div>
-             </div>
-          )}
+            </div>
+            
+            {/* Fields for NEW users */}
+            {!editingUser && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4 border-slate-100">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Email (New) *</label>
+                        <input required type="email" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Password (New) *</label>
+                        <input required type="password" minLength="6" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                    </div>
+                </div>
+            )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
-            <button type="submit" disabled={userMutation.isPending} className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
-              {userMutation.isPending ? 'Processing...' : editingUser ? 'Save Changes' : 'Create User'}
-            </button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
+                <button type="submit" disabled={userMutation.isPending} className="px-4 py-2 bg-blue-900 text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
+                {userMutation.isPending ? 'Processing...' : editingUser ? 'Save Changes' : 'Create User'}
+                </button>
+            </div>
+            </form>
+        </div>
       </Modal>
     </div>
   );

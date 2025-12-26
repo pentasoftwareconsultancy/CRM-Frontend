@@ -1,9 +1,11 @@
+// src/pages/Profile.jsx (Final)
+
 import React, { useState, useEffect } from "react";
 import { Camera, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
+import { authService } from "../services/api"; // Ensure authService is imported for password change
 
 /* ---------------- Avatar fallback ---------------- */
-// This helper generates a placeholder if no avatar exists in the DB
 const avatarFromName = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "U"
@@ -15,7 +17,6 @@ const Profile = ({ currentUser }) => {
   const [form, setForm] = useState({
     name: currentUser?.name || "",
     email: currentUser?.email || "",
-    // Use saved avatar from DB, otherwise use fallback
     avatar: currentUser?.avatar || avatarFromName(currentUser?.name),
     currentPassword: "",
     newPassword: "",
@@ -24,26 +25,31 @@ const Profile = ({ currentUser }) => {
   const [loadingImage, setLoadingImage] = useState(false);
   const [status, setStatus] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  /* ---------------- Image Upload Logic ---------------- */
+  
+  const [passwordStatus, setPasswordStatus] = useState(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  
 const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSelectedFile(file); // Store the raw file for the API call
+    setSelectedFile(file); 
 
-    // For local preview only
     const preview = URL.createObjectURL(file);
     setForm((p) => ({ ...p, avatar: preview }));
 };
 
-  /* ---------------- Save to Backend ---------------- */
-const handleSave = async (e) => {
+const handleSaveProfile = async (e) => {
     e.preventDefault();
     setStatus(null);
+    
+    if (!form.name.trim()) {
+        return setStatus({ type: "error", message: "Name cannot be empty." });
+    }
+    
     setLoadingImage(true);
 
     try {
-        // Use FormData instead of JSON
         const formData = new FormData();
         formData.append("name", form.name);
         
@@ -51,33 +57,74 @@ const handleSave = async (e) => {
             formData.append("avatar", selectedFile);
         }
 
-        // Send formData to your store function
         await updateUser(formData); 
 
         setStatus({ type: "success", message: "Profile saved successfully" });
     } catch (err) {
-        setStatus({ type: "error", message: "Failed to update profile" });
+        setStatus({ type: "error", message: err.response?.data?.message || "Failed to update profile" });
     } finally {
         setLoadingImage(false);
     }
 };
 
+const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordStatus(null);
+    setPasswordLoading(true);
+
+    if (!form.currentPassword || !form.newPassword) {
+        setPasswordStatus({ type: "error", message: "Both password fields are required." });
+        setPasswordLoading(false);
+        return;
+    }
+
+    if (form.newPassword.length < 6) {
+        setPasswordStatus({ type: "error", message: "New password must be at least 6 characters long." });
+        setPasswordLoading(false);
+        return;
+    }
+    
+    if (form.currentPassword === form.newPassword) {
+        setPasswordStatus({ type: "error", message: "New password cannot be the same as current password." });
+        setPasswordLoading(false);
+        return;
+    }
+
+    try {
+        await authService.changePassword({ 
+            currentPassword: form.currentPassword, 
+            newPassword: form.newPassword 
+        });
+        
+        setPasswordStatus({ type: "success", message: "Password updated successfully." });
+        setForm(p => ({ ...p, currentPassword: '', newPassword: '' })); // Clear fields
+
+    } catch (err) {
+        setPasswordStatus({ type: "error", message: err.response?.data?.message || "Password change failed." });
+    } finally {
+        setPasswordLoading(false);
+    }
+};
+
+
   return (
-    <div className="max-w-5xl mx-auto p-8 font-sans">
-      <h1 className="text-3xl font-bold mb-8 text-slate-800">Account Settings</h1>
+    <div className="max-w-5xl mx-auto p-4 sm:p-8 font-sans">
+      <h1 className="text-xl sm:text-3xl font-bold mb-8 text-slate-800">Account Settings</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* ================= LEFT PANEL ================= */}
         <div className="space-y-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center shadow-sm">
-            <div className="relative w-32 h-32 mx-auto">
+            
+            {/* AVATAR SIZE INCREASED: w-40 h-40 on small screens, w-48 h-48 on larger */}
+            <div className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto"> 
               <img
                 src={form.avatar}
                 alt="Avatar"
                 className="w-full h-full rounded-full object-cover border-4 border-slate-50 shadow-inner"
               />
 
-              <label className="absolute bottom-0 right-0 bg-indigo-600 p-2.5 rounded-full cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
+              <label className="absolute bottom-0 right-0 bg-indigo-600 p-2 sm:p-2.5 rounded-full cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
                 <Camera size={18} className="text-white" />
                 <input
                   type="file"
@@ -94,7 +141,7 @@ const handleSave = async (e) => {
               )}
             </div>
 
-            <h3 className="mt-5 text-xl font-bold text-slate-800">{currentUser.name}</h3>
+            <h3 className="mt-5 text-lg sm:text-xl font-bold text-slate-800">{currentUser.name}</h3>
             <p className="text-slate-500 text-sm">{currentUser.email}</p>
 
             <span className="inline-block mt-3 px-4 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
@@ -107,25 +154,28 @@ const handleSave = async (e) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
                 <p className="text-xs opacity-70 uppercase font-bold">Deals</p>
-                <p className="text-2xl font-bold">12</p>
+                <p className="text-xl sm:text-2xl font-bold">12</p>
               </div>
               <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
                 <p className="text-xs opacity-70 uppercase font-bold">Win Rate</p>
-                <p className="text-2xl font-bold">24%</p>
+                <p className="text-xl sm:text-2xl font-bold">24%</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* ================= RIGHT PANEL ================= */}
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
-          <form onSubmit={handleSave} className="space-y-8">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+            
+          {/* Profile Information Form */}
+          <form onSubmit={handleSaveProfile} className="space-y-6 mb-8 pb-8 border-b border-slate-100">
             <section>
-              <h2 className="text-lg font-bold text-slate-800 mb-5 pb-2 border-b">Personal Information</h2>
+              <h2 className="text-base sm:text-lg font-bold text-slate-800 mb-5 pb-2 border-b">Personal Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name *</label>
                   <input
+                    required
                     className="mt-1 w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -141,23 +191,7 @@ const handleSave = async (e) => {
                 </div>
               </div>
             </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-slate-800 mb-5 pb-2 border-b">Security</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <input
-                  type="password"
-                  placeholder="Current Password"
-                  className="p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                />
-                <input
-                  type="password"
-                  placeholder="New Password"
-                  className="p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-            </section>
-
+            
             {status && (
               <div
                 className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium animate-in fade-in slide-in-from-bottom-2 ${
@@ -174,9 +208,60 @@ const handleSave = async (e) => {
             <div className="flex justify-end pt-4">
               <button 
                 type="submit"
-                className="px-10 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
+                disabled={loadingImage}
+                className="px-8 sm:px-10 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95 text-sm disabled:opacity-50"
               >
-                Save Changes
+                {loadingImage ? 'Saving...' : 'Save Profile Changes'}
+              </button>
+            </div>
+          </form>
+
+          {/* Security / Change Password Form */}
+          <form onSubmit={handleChangePassword} className="space-y-6">
+            <section>
+              <h2 className="text-lg font-bold text-slate-800 mb-5 pb-2 border-b">Change Password</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <input
+                  required
+                  type="password"
+                  minLength="6"
+                  placeholder="Current Password *"
+                  className="p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  value={form.currentPassword}
+                  onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                />
+                <input
+                  required
+                  type="password"
+                  minLength="6"
+                  placeholder="New Password (min 6 characters) *"
+                  className="p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  value={form.newPassword}
+                  onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                />
+              </div>
+            </section>
+
+            {passwordStatus && (
+              <div
+                className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
+                  passwordStatus.type === "success"
+                    ? "bg-green-50 text-green-700 border border-green-100"
+                    : "bg-red-50 text-red-700 border border-red-100"
+                }`}
+              >
+                {passwordStatus.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                {passwordStatus.message}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4">
+              <button 
+                type="submit"
+                disabled={passwordLoading}
+                className="px-8 sm:px-10 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200 active:scale-95 text-sm disabled:opacity-50"
+              >
+                {passwordLoading ? 'Updating...' : 'Change Password'}
               </button>
             </div>
           </form>

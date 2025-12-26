@@ -1,4 +1,4 @@
-// src/pages/Leads.jsx (FINAL COMPLETE CODE with Pagination, Dates, and Owner Fix)
+// src/pages/Leads.jsx (Final)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -8,7 +8,7 @@ import { Plus, Search, Filter, Mail, Phone, MapPin, IndianRupeeIcon, X, Eye, Edi
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-// --- Import Modal Component (FR-10) ---
+// --- Import Modal Component ---
 const ImportModal = ({ isOpen, onClose }) => {
     const queryClient = useQueryClient();
     const [file, setFile] = useState(null);
@@ -24,6 +24,7 @@ const ImportModal = ({ isOpen, onClose }) => {
         onSuccess: (data) => {
             alert(`Import successful: ${data.successfulImports} leads added, ${data.failedImports} skipped.`);
             queryClient.invalidateQueries(['leads']);
+            queryClient.invalidateQueries(['notifications_global_count']);
         },
         onError: (error) => {
             const message = error.response?.data?.message || 'Error processing file data. Ensure CSV/Excel columns are correct.';
@@ -117,7 +118,12 @@ const Leads = () => {
 
   const leadMutation = useMutation({
     mutationFn: (data) => editingId ? leadService.updateLead(editingId, data) : leadService.addLead(data),
-    onSuccess: () => { queryClient.invalidateQueries(['leads']); setIsModalOpen(false); setModalError(''); },
+    onSuccess: () => { 
+        queryClient.invalidateQueries(['leads']); 
+        queryClient.invalidateQueries(['notifications_global_count']);
+        setIsModalOpen(false); 
+        setModalError(''); 
+    },
     onError: (error) => { setModalError(error.response?.data?.message || 'Operation Failed: Check if email/phone already exists.'); }
   });
 
@@ -186,10 +192,28 @@ const Leads = () => {
     e.preventDefault();
     setModalError('');
 
-    if (!formData.name || !formData.email || !formData.company || !formData.phone) {
-        return setModalError('Please fill in all required fields (Name, Company, Email, Phone).');
+    // --- Client-Side Validation ---
+    if (!formData.name || !formData.company || !formData.email || !formData.phone) {
+        return setModalError('Name, Company, Email, and Phone are required fields.');
     }
     
+    // Simple email regex check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+        return setModalError('Please enter a valid email address.');
+    }
+
+    // Phone number validation (simple pattern allowing digits/dashes/spaces)
+    const phoneRegex = /^[0-9\s-]{6,15}$/;
+    if (!phoneRegex.test(formData.phone)) {
+        return setModalError('Please enter a valid phone number (6-15 digits).');
+    }
+    
+    if (Number(formData.budget) < 0) {
+        return setModalError('Budget cannot be negative.');
+    }
+    // --- End Validation ---
+
     let finalDescription = formData.description;
     if (formData.source === 'other' && formData.customSourceDetail) {
         finalDescription = `Custom Source: ${formData.customSourceDetail}. ${formData.description}`;
@@ -228,36 +252,39 @@ const Leads = () => {
   const canDelete = user.role === 'admin' || user.role === 'manager';
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    // Responsive padding
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Leads Management ({totalLeads})</h2>
-          <p className="text-slate-500 mt-1">Capture, organize, and manage your potential customers.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Leads Management ({totalLeads})</h2>
+          <p className="text-sm text-slate-500 mt-1">Capture, organize, and manage your potential customers.</p>
         </div>
-        <div className="flex gap-3">
+        {/* Button Group: Stacks on small screens */}
+        <div className="flex gap-3 flex-wrap justify-end">
             <button
                 onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium hover:bg-slate-50 text-sm transition-colors"
+                className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
                 disabled={isLoading}
             >
                 <Upload size={18} />
-                Import
+                <span className="hidden sm:inline">Import</span>
             </button>
             <button
                 onClick={handleExport}
-                className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium hover:bg-slate-50 text-sm transition-colors"
+                className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
                 disabled={isLoading}
             >
                 <Download size={18} />
-                {exportMutation.isPending ? 'Exporting...' : 'Export'}
+                {exportMutation.isPending ? 'Exporting...' : <span className="hidden sm:inline">Export</span>}
             </button>
             <button 
               onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 text-white bg-blue-900 hover:bg-blue-700 px-5 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
+              className="flex items-center gap-2 text-white bg-blue-900 hover:bg-blue-700 px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/20"
               disabled={isLoading}
             >
               <Plus size={18} />
-              Add New Lead
+              <span className="hidden sm:inline">Add New Lead</span>
+              <span className="sm:hidden">Add Lead</span>
             </button>
         </div>
       </div>
@@ -276,7 +303,7 @@ const Leads = () => {
           </div>
           <button 
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${
               showFilters ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
@@ -296,6 +323,7 @@ const Leads = () => {
                  <X size={12} /> Clear all
                </button>
              </div>
+             {/* Stacks on mobile */}
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                <div>
                  <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
@@ -347,7 +375,7 @@ const Leads = () => {
           <div className="p-12 text-center text-slate-500">Loading leads data...</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[1200px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-4">Lead Info</th>
@@ -367,7 +395,7 @@ const Leads = () => {
                     <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20 flex-shrink-0">
                             {lead.name.charAt(0)}
                           </div>
                           <div>
@@ -379,7 +407,7 @@ const Leads = () => {
                       <td className="px-6 py-4">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Mail size={14} className="text-slate-400" /> {lead.email}
+                              <Mail size={14} className="text-slate-400" /> <span className="truncate">{lead.email}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                               <Phone size={14} className="text-slate-400" /> {lead.phone}
@@ -489,7 +517,7 @@ const Leads = () => {
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200 gap-3">
         <p className="text-sm text-slate-600">
             Showing {Math.min(totalLeads, (currentPage - 1) * limit + 1)} - {Math.min(totalLeads, currentPage * limit)} of {totalLeads} leads
         </p>
@@ -531,7 +559,7 @@ const Leads = () => {
               </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
               <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
@@ -541,7 +569,7 @@ const Leads = () => {
               <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
               <input required type="email" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
@@ -551,18 +579,17 @@ const Leads = () => {
               <input required type="tel" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            {/* ... (Budget and City inputs) ... */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Budget</label>
-              <input type="number" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})} />
+              <input type="number" min="0" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
               <input type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
               <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
@@ -573,7 +600,7 @@ const Leads = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value, customSourceDetail: ''})}>
+              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:focus:border-primary outline-none capitalize" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value, customSourceDetail: ''})}>
                 {['website', 'referral', 'call', 'other'].map(s => (
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                 ))}

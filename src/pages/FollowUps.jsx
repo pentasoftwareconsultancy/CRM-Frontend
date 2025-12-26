@@ -1,4 +1,4 @@
-// src/pages/FollowUps.jsx (Finalized Logic)
+// src/pages/FollowUps.jsx (Final)
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -53,33 +53,27 @@ const FollowUps = () => {
   });
   
   const counts = allFollowUpsForCounts.reduce((acc, f) => {
-    // Note: f.status is now the dynamically derived status (pending, overdue, completed)
     acc[f.status] = (acc[f.status] || 0) + 1;
     return acc;
   }, { pending: 0, overdue: 0, completed: 0 });
 
 
   // --- Filtering Logic ---
-  // We filter the paginated data based on the derived status
   const followUps = followUpsData?.data || [];
-  const totalFollowUps = followUpsData?.total || 0; // Note: Total refers to the count of the base query (pending OR completed)
-
+  const totalFollowUps = followUpsData?.total || 0; 
+  
   const filteredData = followUps.filter(f => f.status === activeTab);
   
-  // When switching tabs between pending/overdue/completed, we need to reset pagination,
-  // but also re-evaluate the total count based on the new active tab's overall count.
-  // Since totalFollowUps only reflects the base DB query ('pending' or 'completed'), 
-  // we use the local 'counts' for accurate display totals.
   const displayTotal = counts[activeTab] || 0;
   const totalPages = Math.ceil(displayTotal / limit);
-  // We must re-evaluate pagination context if the total count changes based on the tab
   
-  // --- Mutations (Omitted for brevity, they remain the same) ---
+  // --- Mutations ---
   const createFollowUpMutation = useMutation({
     mutationFn: (data) => activityService.createFollowUp(data.leadId, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['followups']);
       queryClient.invalidateQueries(['allFollowUpsForCounts']); // Crucial for count update
+      queryClient.invalidateQueries(['notifications_global_count']);
       setIsModalOpen(false);
       setFormData(initialFormState);
       setError('');
@@ -93,7 +87,7 @@ const FollowUps = () => {
     mutationFn: (id) => activityService.completeFollowUp(id, { result: 'Completed successfully.' }),
     onSuccess: () => {
       queryClient.invalidateQueries(['followups']);
-      queryClient.invalidateQueries(['allFollowUpsForCounts']); // Crucial for count update
+      queryClient.invalidateQueries(['allFollowUpsForCounts']); 
       queryClient.invalidateQueries(['notifications_global_count']);
     },
     onError: (err) => {
@@ -102,12 +96,20 @@ const FollowUps = () => {
   });
 
 
-  // --- Handlers (Omitted for brevity, they remain the same) ---
+  // --- Handlers ---
   const handleCreate = (e) => {
     e.preventDefault();
+    setError(''); 
+
+    // --- Validation Check ---
     if (!formData.leadId || !formData.scheduledAt) {
-        return setError('Lead and Scheduled Date/Time are required.');
+        return setError('Lead and Scheduled Date/Time are required fields.');
     }
+    
+    // Optional: Prevent scheduling too far in the past unless explicit logging is allowed
+    // For simplicity, we stick to mandatory fields check only.
+    // --- End Validation Check ---
+
     createFollowUpMutation.mutate(formData);
   };
 
@@ -274,9 +276,9 @@ const FollowUps = () => {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Schedule New Activity">
         <form onSubmit={handleCreate} className="space-y-4">
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm flex items-center gap-2"><AlertCircle size={14}/> {error}</p>}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Lead / Customer</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Lead / Customer *</label>
             <select 
               required
               className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
@@ -292,8 +294,9 @@ const FollowUps = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
               <select 
+                required
                 className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize"
                 value={formData.type}
                 onChange={e => setFormData({...formData, type: e.target.value})}
@@ -304,11 +307,11 @@ const FollowUps = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Date & Time</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Date & Time *</label>
               <input 
                 required
                 type="datetime-local" 
-                className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:focus:border-primary outline-none"
                 value={formData.scheduledAt}
                 onChange={e => setFormData({...formData, scheduledAt: e.target.value})}
               />
