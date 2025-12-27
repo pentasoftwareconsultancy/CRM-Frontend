@@ -204,9 +204,9 @@ const Leads = () => {
     }
 
     // Phone number validation (simple pattern allowing digits/dashes/spaces)
-    const phoneRegex = /^[0-9\s-]{6,15}$/;
+    const phoneRegex = /^[0-9\s-]{10}$/;
     if (!phoneRegex.test(formData.phone)) {
-        return setModalError('Please enter a valid phone number (6-15 digits).');
+        return setModalError('Please enter a valid phone number (10 digits).');
     }
     
     if (Number(formData.budget) < 0) {

@@ -27,11 +27,11 @@ const Login = () => {
 
     try {
       // --- Client-Side Validation ---
-      if (password.length < 6) { 
-         setError('Password must be at least 6 characters long.');
-         setIsLoading(false);
-         return;
-      }
+      // if (password.length < 6) { 
+      //    setError('Password must be at least 6 characters long.');
+      //    setIsLoading(false);
+      //    return;
+      // }
       
       await login(email, password);
       
