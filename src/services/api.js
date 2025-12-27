@@ -8,6 +8,11 @@ const apiService = axios.create({
   baseURL: API_BASE_URL,
 });
 
+// Helper to normalize responses that may either return an array directly
+// or a wrapper object { data: [...] }
+const normalizeList = (res) => Array.isArray(res.data) ? res.data : (res.data.data || []);
+const normalizeSingle = (res) => (res.data && res.data.data) ? res.data.data : res.data;
+
 // Request interceptor to attach JWT token (FR-2)
 apiService.interceptors.request.use(config => {
   const user = JSON.parse(localStorage.getItem('user') || 'null'); 
@@ -24,7 +29,8 @@ apiService.interceptors.request.use(config => {
 export const authService = {
   login: async (email, password) => {
     const res = await apiService.post('/auth/login', { email, password });
-    return { ...res.data.user, token: res.data.token };
+    const user = res.data.user;
+    return { ...user, id: user._id, token: res.data.token };
   },
   logout: () => {
     return Promise.resolve();
@@ -40,12 +46,14 @@ export const userService = {
   // Returns paged response
   getUsers: async (filters = {}) => {
     const res = await apiService.get('/users', { params: filters });
-    const users = res.data.data.map(u => ({ ...u, id: u._id }));
-    return { ...res.data, data: users }; 
+    const list = normalizeList(res).map(u => ({ ...u, id: u._id }));
+    // Preserve wrapper fields like page/total if present
+    return { ...res.data, data: list };
   },
     getAssignees: async () => {
     const res = await apiService.get('/users/assignees');
-    return res.data.map(u => ({ ...u, id: u._id })); // Return array directly
+    const list = normalizeList(res).map(u => ({ ...u, id: u._id }));
+    return list; // Return array directly
   },
   createUser: async (userData) => {
     const res = await apiService.post('/users', userData);
@@ -70,12 +78,13 @@ export const userService = {
 export const leadService = {
   getLeads: async (params = {}) => {
     const res = await apiService.get('/leads', { params });
-    const leads = res.data.data.map(l => ({ ...l, id: l._id }));
+    const leads = normalizeList(res).map(l => ({ ...l, id: l._id }));
     return { ...res.data, data: leads };
   },
   getLead: async (id) => {
     const res = await apiService.get(`/leads/${id}`);
-    return { ...res.data, id: res.data._id };
+    const payload = normalizeSingle(res) || {};
+    return { ...payload, id: payload._id };
   },
   addLead: async (leadData) => {
     const res = await apiService.post('/leads', leadData);
@@ -112,7 +121,8 @@ export const leadService = {
 export const dealService = {
   getDeals: async (params = {}) => {
     const res = await apiService.get('/deals', { params });
-    return res.data.map(d => ({ ...d, id: d._id }));
+    const list = normalizeList(res).map(d => ({ ...d, id: d._id }));
+    return list;
   },
   createDeal: async (dealData) => {
     const res = await apiService.post('/deals', dealData);
@@ -137,12 +147,13 @@ export const customerService = {
   // Returns paged response
   getCustomers: async (params = {}) => {
     const res = await apiService.get('/customers', { params });
-    const customers = res.data.data.map(c => ({ ...c, id: c._id }));
+    const customers = normalizeList(res).map(c => ({ ...c, id: c._id }));
     return { ...res.data, data: customers }; 
   },
   getCustomer: async (id) => {
     const res = await apiService.get(`/customers/${id}`); 
-    return { ...res.data, id: res.data._id };
+    const payload = normalizeSingle(res) || {};
+    return { ...payload, id: payload._id };
   },
   createCustomer: async (customerData) => {
     const res = await apiService.post('/customers', customerData); 
@@ -160,7 +171,7 @@ export const activityService = {
   // Returns paged response
   getFollowUps: async (params = {}) => {
     const res = await apiService.get('/followups', { params });
-    const followups = res.data.data.map(f => ({ ...f, id: f._id }));
+    const followups = normalizeList(res).map(f => ({ ...f, id: f._id }));
     return { ...res.data, data: followups };
   },
   createFollowUp: async (leadId, data) => {
@@ -173,7 +184,8 @@ export const activityService = {
   },
   getLeadNotes: async (leadId) => {
     const res = await apiService.get(`/leads/${leadId}/notes`);
-    return res.data.map(n => ({ ...n, id: n._id }));
+    const list = normalizeList(res).map(n => ({ ...n, id: n._id }));
+    return list;
   },
   addNote: async (leadId, content) => {
     const res = await apiService.post(`/leads/${leadId}/notes`, { content });
@@ -189,7 +201,8 @@ export const activityService = {
 export const notificationService = {
   getNotifications: async () => {
     const res = await apiService.get('/notifications'); 
-    return res.data.map(n => ({ ...n, id: n._id }));
+    const list = normalizeList(res).map(n => ({ ...n, id: n._id }));
+    return list;
   },
   markNotificationRead: async (id) => {
     const res = await apiService.patch(`/notifications/${id}/read`); 
@@ -237,7 +250,7 @@ export const reportService = {
         { name: 'Won Deals', value: overview.data.wonDeals },
         { name: 'Lost Deals', value: overview.data.lostDeals },
       ],
-      teamPerformance: teamPerformance.data.map(u => ({
+      teamPerformance: normalizeList(teamPerformance).map(u => ({
         name: u.user.name,
         assignedLeads: u.leadsAssigned,
         wonDeals: u.dealsWon,
