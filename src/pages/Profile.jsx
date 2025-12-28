@@ -1,7 +1,7 @@
 // src/pages/Profile.jsx (Final)
 
 import React, { useState, useEffect } from "react";
-import { Camera, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Camera, CheckCircle, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { authService } from "../services/api"; // Ensure authService is imported for password change
 
@@ -25,86 +25,88 @@ const Profile = ({ currentUser }) => {
   const [loadingImage, setLoadingImage] = useState(false);
   const [status, setStatus] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  
+
   const [passwordStatus, setPasswordStatus] = useState(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  
-const handleImageChange = (e) => {
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSelectedFile(file); 
+    setSelectedFile(file);
 
     const preview = URL.createObjectURL(file);
     setForm((p) => ({ ...p, avatar: preview }));
-};
+  };
 
-const handleSaveProfile = async (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setStatus(null);
-    
+
     if (!form.name.trim()) {
-        return setStatus({ type: "error", message: "Name cannot be empty." });
+      return setStatus({ type: "error", message: "Name cannot be empty." });
     }
-    
+
     setLoadingImage(true);
 
     try {
-        const formData = new FormData();
-        formData.append("name", form.name);
-        
-        if (selectedFile) {
-            formData.append("avatar", selectedFile);
-        }
+      const formData = new FormData();
+      formData.append("name", form.name);
 
-        await updateUser(formData); 
+      if (selectedFile) {
+        formData.append("avatar", selectedFile);
+      }
 
-        setStatus({ type: "success", message: "Profile saved successfully" });
+      await updateUser(formData);
+
+      setStatus({ type: "success", message: "Profile saved successfully" });
     } catch (err) {
-        setStatus({ type: "error", message: err.response?.data?.message || "Failed to update profile" });
+      setStatus({ type: "error", message: err.response?.data?.message || "Failed to update profile" });
     } finally {
-        setLoadingImage(false);
+      setLoadingImage(false);
     }
-};
+  };
 
-const handleChangePassword = async (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
     setPasswordStatus(null);
     setPasswordLoading(true);
 
     if (!form.currentPassword || !form.newPassword) {
-        setPasswordStatus({ type: "error", message: "Both password fields are required." });
-        setPasswordLoading(false);
-        return;
+      setPasswordStatus({ type: "error", message: "Both password fields are required." });
+      setPasswordLoading(false);
+      return;
     }
 
     if (form.newPassword.length < 6) {
-        setPasswordStatus({ type: "error", message: "New password must be at least 6 characters long." });
-        setPasswordLoading(false);
-        return;
+      setPasswordStatus({ type: "error", message: "New password must be at least 6 characters long." });
+      setPasswordLoading(false);
+      return;
     }
-    
+
     if (form.currentPassword === form.newPassword) {
-        setPasswordStatus({ type: "error", message: "New password cannot be the same as current password." });
-        setPasswordLoading(false);
-        return;
+      setPasswordStatus({ type: "error", message: "New password cannot be the same as current password." });
+      setPasswordLoading(false);
+      return;
     }
 
     try {
-        await authService.changePassword({ 
-            currentPassword: form.currentPassword, 
-            newPassword: form.newPassword 
-        });
-        
-        setPasswordStatus({ type: "success", message: "Password updated successfully." });
-        setForm(p => ({ ...p, currentPassword: '', newPassword: '' })); // Clear fields
+      await authService.changePassword({
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword
+      });
+
+      setPasswordStatus({ type: "success", message: "Password updated successfully." });
+      setForm(p => ({ ...p, currentPassword: '', newPassword: '' })); // Clear fields
 
     } catch (err) {
-        setPasswordStatus({ type: "error", message: err.response?.data?.message || "Password change failed." });
+      setPasswordStatus({ type: "error", message: err.response?.data?.message || "Password change failed." });
     } finally {
-        setPasswordLoading(false);
+      setPasswordLoading(false);
     }
-};
+  };
 
 
   return (
@@ -115,9 +117,9 @@ const handleChangePassword = async (e) => {
         {/* ================= LEFT PANEL ================= */}
         <div className="space-y-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center shadow-sm">
-            
+
             {/* AVATAR SIZE INCREASED: w-40 h-40 on small screens, w-48 h-48 on larger */}
-            <div className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto"> 
+            <div className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto">
               <img
                 src={form.avatar}
                 alt="Avatar"
@@ -166,7 +168,7 @@ const handleChangePassword = async (e) => {
 
         {/* ================= RIGHT PANEL ================= */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-            
+
           {/* Profile Information Form */}
           <form onSubmit={handleSaveProfile} className="space-y-6 mb-8 pb-8 border-b border-slate-100">
             <section>
@@ -191,14 +193,13 @@ const handleChangePassword = async (e) => {
                 </div>
               </div>
             </section>
-            
+
             {status && (
               <div
-                className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium animate-in fade-in slide-in-from-bottom-2 ${
-                  status.type === "success"
+                className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium animate-in fade-in slide-in-from-bottom-2 ${status.type === "success"
                     ? "bg-green-50 text-green-700 border border-green-100"
                     : "bg-red-50 text-red-700 border border-red-100"
-                }`}
+                  }`}
               >
                 {status.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
                 {status.message}
@@ -206,7 +207,7 @@ const handleChangePassword = async (e) => {
             )}
 
             <div className="flex justify-end pt-4">
-              <button 
+              <button
                 type="submit"
                 disabled={loadingImage}
                 className="px-8 sm:px-10 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95 text-sm disabled:opacity-50"
@@ -221,34 +222,51 @@ const handleChangePassword = async (e) => {
             <section>
               <h2 className="text-lg font-bold text-slate-800 mb-5 pb-2 border-b">Change Password</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <input
-                  required
-                  type="password"
-                  minLength="6"
-                  placeholder="Current Password *"
-                  className="p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                  value={form.currentPassword}
-                  onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
-                />
-                <input
-                  required
-                  type="password"
-                  minLength="6"
-                  placeholder="New Password (min 6 characters) *"
-                  className="p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                  value={form.newPassword}
-                  onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-                />
+                <div className="relative">
+                  <input
+                    required
+                    type={showCurrentPassword ? "text" : "password"}
+                    minLength="6"
+                    placeholder="Current Password *"
+                    className="w-full p-3 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                    value={form.currentPassword}
+                    onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors focus:outline-none"
+                  >
+                    {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    required
+                    type={showNewPassword ? "text" : "password"}
+                    minLength="6"
+                    placeholder="New Password (min 6 characters) *"
+                    className="w-full p-3 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                    value={form.newPassword}
+                    onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors focus:outline-none"
+                  >
+                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </section>
 
             {passwordStatus && (
               <div
-                className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
-                  passwordStatus.type === "success"
+                className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${passwordStatus.type === "success"
                     ? "bg-green-50 text-green-700 border border-green-100"
                     : "bg-red-50 text-red-700 border border-red-100"
-                }`}
+                  }`}
               >
                 {passwordStatus.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
                 {passwordStatus.message}
@@ -256,7 +274,7 @@ const handleChangePassword = async (e) => {
             )}
 
             <div className="flex justify-end pt-4">
-              <button 
+              <button
                 type="submit"
                 disabled={passwordLoading}
                 className="px-8 sm:px-10 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200 active:scale-95 text-sm disabled:opacity-50"

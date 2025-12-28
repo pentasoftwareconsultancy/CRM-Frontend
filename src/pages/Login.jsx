@@ -1,27 +1,30 @@
 // src/pages/Login.jsx (FINAL)
 import React, { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  ShieldCheck, 
-  Zap, 
-  BarChart3, 
-  CheckCircle2, 
-  Mail, 
-  Lock 
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  Zap,
+  BarChart3,
+  CheckCircle2,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const { login } = useAuthStore();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
     setIsLoading(true);
     setError('');
 
@@ -32,11 +35,11 @@ const Login = () => {
       //    setIsLoading(false);
       //    return;
       // }
-      
+
       await login(email, password);
-      
+
       // Navigate to the Dashboard upon successful login
-      navigate('/', { replace: true }); 
+      navigate('/', { replace: true });
 
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed. Check credentials.';
@@ -48,16 +51,16 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
-      
+
       {/* LEFT SIDE: Visual Design & Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12">
-        
+
         {/* Background Decorative Elements */}
         <div className="absolute top-0 left-0 w-full h-full opacity-20">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600 blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600 blur-[120px]"></div>
         </div>
-        
+
         {/* Geometric Pattern Overlay */}
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
 
@@ -74,7 +77,7 @@ const Login = () => {
             Accelerate your <br />
             <span className="text-blue-500">Sales Velocity.</span>
           </h2>
-          
+
           <p className="text-slate-400 text-lg mb-10 leading-relaxed">
             The next generation of relationship management. Track leads, close deals, and analyze performance in one unified platform.
           </p>
@@ -111,7 +114,7 @@ const Login = () => {
               </div>
             </div>
           </div>
-          
+
           <p className="mt-12 text-slate-500 text-sm font-medium">
             © 2025 NexusCRM Enterprise Solution. All rights reserved.
           </p>
@@ -121,13 +124,13 @@ const Login = () => {
       {/* RIGHT SIDE: Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-50">
         <div className="max-w-md w-full">
-          
+
           {/* Mobile Logo Only */}
           <div className="lg:hidden flex flex-col items-center mb-8">
-             <div className="p-3 bg-blue-600 rounded-2xl mb-4">
-                <LayoutDashboard size={32} className="text-white" />
-             </div>
-             <h1 className="text-2xl font-bold text-slate-800">NexusCRM</h1>
+            <div className="p-3 bg-blue-600 rounded-2xl mb-4">
+              <LayoutDashboard size={32} className="text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-800">NexusCRM</h1>
           </div>
 
           <div className="mb-10 text-center lg:text-left">
@@ -136,7 +139,7 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-600"></div>
@@ -172,14 +175,21 @@ const Login = () => {
                   <Lock size={20} />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   minLength="6"
-                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-800"
+                  className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-slate-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-800"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 
