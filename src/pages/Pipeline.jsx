@@ -7,7 +7,7 @@ import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, 
 import Modal from '../components/Modal';
 import { Link } from 'react-router-dom';
 
-const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'WON', 'LOST'];
+const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'WON', 'LOST', 'CANCELLED'];
 
 // --- Color Configuration for Stages ---
 const STAGE_STYLES = {
@@ -59,6 +59,13 @@ const STAGE_STYLES = {
     border: 'border-slate-300',
     text: 'text-slate-600',
     accent: 'bg-slate-400'
+  },
+  CANCELLED: {
+    bg: 'bg-rose-50/50',
+    headerBg: 'bg-rose-100',
+    border: 'border-rose-200',
+    text: 'text-rose-700',
+    accent: 'bg-rose-500'
   }
 };
 
@@ -199,7 +206,7 @@ const Pipeline = () => {
     const deal = deals.find(d => d.id === draggedDealId);
     if (!deal || deal.stage === newStage) return;
 
-    if (newStage === 'WON' || newStage === 'LOST') {
+    if (newStage === 'WON' || newStage === 'LOST' || newStage === 'CANCELLED') {
       const reason = prompt(`Enter reason for closing as ${newStage}:`);
       if (reason) closeDealMutation.mutate({ dealId: draggedDealId, status: newStage, reason });
     } else {

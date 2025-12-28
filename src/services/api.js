@@ -3,7 +3,7 @@
 import axios from 'axios';
 
 // Configure Axios instance
-const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL || 'http://localhost:5000/api'; 
+const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL || 'http://localhost:5000/api';
 const apiService = axios.create({
   baseURL: API_BASE_URL,
 });
@@ -15,14 +15,14 @@ const normalizeSingle = (res) => (res.data && res.data.data) ? res.data.data : r
 
 // Request interceptor to attach JWT token (FR-2)
 apiService.interceptors.request.use(config => {
-  const user = JSON.parse(localStorage.getItem('user') || 'null'); 
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
   const token = user ? user.token : null;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 }, error => {
-    return Promise.reject(error);
+  return Promise.reject(error);
 });
 
 // --- Authentication Service (remains the same) ---
@@ -50,7 +50,7 @@ export const userService = {
     // Preserve wrapper fields like page/total if present
     return { ...res.data, data: list };
   },
-    getAssignees: async () => {
+  getAssignees: async () => {
     const res = await apiService.get('/users/assignees');
     const list = normalizeList(res).map(u => ({ ...u, id: u._id }));
     return list; // Return array directly
@@ -67,7 +67,7 @@ export const userService = {
     const res = await apiService.delete(`/users/${id}`);
     return res.data;
   },
-   
+
   updateProfile: async (profileData) => {
     const res = await apiService.put('/users/profile', profileData);
     return res.data;
@@ -94,14 +94,14 @@ export const leadService = {
     const res = await apiService.put(`/leads/${id}`, updates);
     return res.data;
   },
-  
+
   // FR-10 Export
   exportLeads: async (params = {}) => {
-    const res = await apiService.get('/leads/export', { 
-        params,
-        responseType: 'blob'
+    const res = await apiService.get('/leads/export', {
+      params,
+      responseType: 'blob'
     });
-    return res.data; 
+    return res.data;
   },
 
   // FR-10 Import Placeholder
@@ -109,7 +109,7 @@ export const leadService = {
     const res = await apiService.post('/leads/import', formData);
     return res.data;
   },
-  
+
   // 3.5 DELETE /leads/:id (NEWLY ADDED)
   deleteLead: async (id) => {
     const res = await apiService.delete(`/leads/${id}`);
@@ -136,7 +136,7 @@ export const dealService = {
     const res = await apiService.patch(`/deals/${dealId}/close`, { status, reason });
     return res.data;
   },
-  deleteDeal: async (id) => { 
+  deleteDeal: async (id) => {
     const res = await apiService.delete(`/deals/${id}`);
     return res.data;
   },
@@ -148,19 +148,19 @@ export const customerService = {
   getCustomers: async (params = {}) => {
     const res = await apiService.get('/customers', { params });
     const customers = normalizeList(res).map(c => ({ ...c, id: c._id }));
-    return { ...res.data, data: customers }; 
+    return { ...res.data, data: customers };
   },
   getCustomer: async (id) => {
-    const res = await apiService.get(`/customers/${id}`); 
+    const res = await apiService.get(`/customers/${id}`);
     const payload = normalizeSingle(res) || {};
     return { ...payload, id: payload._id };
   },
   createCustomer: async (customerData) => {
-    const res = await apiService.post('/customers', customerData); 
+    const res = await apiService.post('/customers', customerData);
     return res.data;
   },
   updateCustomer: async (id, updates) => {
-    const res = await apiService.put(`/customers/${id}`, updates); 
+    const res = await apiService.put(`/customers/${id}`, updates);
     return res.data;
   },
 };
@@ -200,12 +200,12 @@ export const activityService = {
 // --- Notification Service (remains the same) ---
 export const notificationService = {
   getNotifications: async () => {
-    const res = await apiService.get('/notifications'); 
+    const res = await apiService.get('/notifications');
     const list = normalizeList(res).map(n => ({ ...n, id: n._id }));
     return list;
   },
   markNotificationRead: async (id) => {
-    const res = await apiService.patch(`/notifications/${id}/read`); 
+    const res = await apiService.patch(`/notifications/${id}/read`);
     return res.data;
   },
 };
@@ -215,27 +215,27 @@ export const reportService = {
   getDashboardStats: async () => {
     // Calls the backend, which now includes CP/PP calculations
     const res = await apiService.get('/reports/overview');
-    
+
     // FIX: Extract all fields for trend calculation in frontend
     return {
-      totalLeads: res.data.totalLeads, 
+      totalLeads: res.data.totalLeads,
       pipelineValue: res.data.pipelineValue,
       totalRevenue: res.data.wonValue,
       newLeads: res.data.newLeads,
       winRate: res.data.winRate,
-      
+
       prevWonValue: res.data.prevWonValue,
       prevLeads: res.data.prevLeads,
       prevWinRate: res.data.prevWinRate,
     };
   },
-  
+
   // NEW: Service to fetch weekly performance data
   getWeeklyPerformance: async () => {
     const res = await apiService.get('/reports/weekly-performance');
     return res.data;
   },
-  
+
   getReports: async () => {
     const [overview, teamPerformance, conversion] = await Promise.all([
       apiService.get('/reports/overview'),
@@ -249,6 +249,7 @@ export const reportService = {
         { name: 'New Leads', value: overview.data.newLeads },
         { name: 'Won Deals', value: overview.data.wonDeals },
         { name: 'Lost Deals', value: overview.data.lostDeals },
+        { name: 'Cancelled Deals', value: overview.data.cancelledDeals },
       ],
       teamPerformance: normalizeList(teamPerformance).map(u => ({
         name: u.user.name,
@@ -256,7 +257,7 @@ export const reportService = {
         wonDeals: u.dealsWon,
       })),
       conversionData: [
-         { name: 'Overall', rate: conversion.data.overallConversionRate, total: conversion.data.totalLeadsCreated }
+        { name: 'Overall', rate: conversion.data.overallConversionRate, total: conversion.data.totalLeadsCreated }
       ]
     };
   }
