@@ -121,6 +121,8 @@ const LeadDetail = () => {
 
     // Clean up temporary field before sending to API
     delete payload.customSourceDetail;
+    // Enforce: Lead status must NOT be editable from the UI — strip it from update payloads
+    if (payload.status) delete payload.status;
 
     updateLeadMutation.mutate(payload);
   };
@@ -329,11 +331,8 @@ const LeadDetail = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none capitalize text-sm" value={editFormData.status} onChange={e => setEditFormData({...editFormData, status: e.target.value})}>
-                {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
-                    <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              {/* Make status read-only: show current status but do not allow edits */}
+              <div className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm capitalize bg-slate-50">{editFormData.status}</div>
             </div>
             
             {/* SOLUTION: Conditional Source Logic */}

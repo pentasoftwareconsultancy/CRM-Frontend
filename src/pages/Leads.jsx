@@ -226,6 +226,14 @@ const Leads = () => {
         assignedTo: formData.assignedTo || user.id
     };
     delete payload.customSourceDetail;
+    // Enforce: Do not allow clients to change lead status via create/edit modal
+    if (editingId) {
+      // When editing an existing lead, strip status so it cannot be modified
+      if (payload.status) delete payload.status;
+    } else {
+      // When creating a new lead, ensure status is set to 'new'
+      payload.status = 'new';
+    }
 
     leadMutation.mutate(payload);
   };
@@ -592,11 +600,12 @@ const Leads = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none capitalize" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-                {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                ))}
-              </select>
+              {/* Status is not editable via the modal. Show current status for edits or default for new leads. */}
+              {editingId ? (
+                <div className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm capitalize bg-slate-50">{formData.status}</div>
+              ) : (
+                <div className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm">New (default)</div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
