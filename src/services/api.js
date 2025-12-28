@@ -136,6 +136,10 @@ export const dealService = {
     const res = await apiService.patch(`/deals/${dealId}/close`, { status, reason });
     return res.data;
   },
+  updateDeal: async (id, updates) => {
+    const res = await apiService.put(`/deals/${id}`, updates);
+    return res.data;
+  },
   deleteDeal: async (id) => {
     const res = await apiService.delete(`/deals/${id}`);
     return res.data;

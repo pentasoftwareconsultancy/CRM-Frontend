@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dealService, leadService } from '../services/api';
-import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, Circle } from 'lucide-react';
+import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, Circle, ExternalLink } from 'lucide-react';
 import Modal from '../components/Modal';
 import { Link } from 'react-router-dom';
 
@@ -155,10 +155,157 @@ const NewDealModal = ({ isOpen, onClose }) => {
   );
 };
 
+const EditDealModal = ({ isOpen, onClose, deal }) => {
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    title: '',
+    value: 0,
+    currency: 'INR',
+    stage: '',
+    expectedCloseDate: '',
+    closedReason: ''
+  });
+
+  React.useEffect(() => {
+    if (deal) {
+      setFormData({
+        title: deal.title || '',
+        value: deal.value || 0,
+        currency: deal.currency || 'INR',
+        stage: deal.stage || '',
+        expectedCloseDate: deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toISOString().substring(0, 10) : '',
+        closedReason: deal.closedReason || ''
+      });
+    }
+  }, [deal]);
+
+  const updateDealMutation = useMutation({
+    mutationFn: (updates) => dealService.updateDeal(deal.id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['deals']);
+      onClose();
+    }
+  });
+
+  const closeDealMutation = useMutation({
+    mutationFn: ({ status, reason }) => dealService.closeDeal(deal.id, status, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['deals']);
+      queryClient.invalidateQueries(['dashboardStats']);
+      onClose();
+    }
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    // If the stage is terminal, use the closeDeal API
+    if (['WON', 'LOST', 'CANCELLED'].includes(formData.stage) && formData.stage !== deal.stage) {
+      if (!formData.closedReason || formData.closedReason.length < 3) {
+        alert('Please provide a reason for closing the deal.');
+        return;
+      }
+      closeDealMutation.mutate({ status: formData.stage, reason: formData.closedReason });
+    } else {
+      // Standard update for other fields or non-terminal stage changes
+      updateDealMutation.mutate(formData);
+    }
+  };
+
+  if (!deal) return null;
+
+  const isTerminal = ['WON', 'LOST', 'CANCELLED'].includes(formData.stage);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Deal Details">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 mb-2">
+          <div className="flex items-center gap-2">
+            <Building size={16} className="text-slate-400" />
+            <span className="text-sm font-bold text-slate-700">{deal.lead?.company || deal.lead?.name || 'Unknown Lead'}</span>
+          </div>
+          <Link
+            to={`/leads/${deal.lead?.id || deal.lead?._id}`}
+            className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800"
+          >
+            View Lead <ExternalLink size={12} />
+          </Link>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Deal Title *</label>
+          <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Value ({formData.currency}) *</label>
+            <input required type="number" min="0" className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm" value={formData.value} onChange={e => setFormData({ ...formData, value: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status / Stage</label>
+            <select
+              className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm capitalize"
+              value={formData.stage}
+              onChange={e => setFormData({ ...formData, stage: e.target.value })}
+            >
+              {STAGES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Expected Close Date</label>
+          <div className="relative flex items-center">
+            <Calendar size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
+            <input
+              type="date"
+              className="w-full rounded-lg border-slate-300 border pl-10 pr-3 py-2 text-sm"
+              value={formData.expectedCloseDate}
+              onChange={e => setFormData({ ...formData, expectedCloseDate: e.target.value })}
+            />
+          </div>
+        </div>
+
+        {isTerminal && (
+          <div className="animate-in fade-in slide-in-from-top-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Reason for {formData.stage.replace('_', ' ')} *</label>
+            <textarea
+              required
+              placeholder="Why was this deal closed?"
+              className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm h-20 resize-none"
+              value={formData.closedReason}
+              onChange={e => setFormData({ ...formData, closedReason: e.target.value })}
+            />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg text-sm transition-colors">Cancel</button>
+          <button
+            type="submit"
+            disabled={updateDealMutation.isPending || closeDealMutation.isPending}
+            className="px-6 py-2 bg-blue-900 text-white font-bold rounded-lg hover:bg-blue-600 transition-all shadow-md disabled:opacity-50"
+          >
+            {updateDealMutation.isPending || closeDealMutation.isPending ? 'Saving...' : 'Update Deal'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
 const Pipeline = () => {
   const queryClient = useQueryClient();
   const [draggedDealId, setDraggedDealId] = useState(null);
   const [isNewDealModalOpen, setIsNewDealModalOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleEditDeal = (deal) => {
+    setSelectedDeal(deal);
+    setIsEditModalOpen(true);
+  };
 
   const { data: deals = [], isLoading: loadingDeals } = useQuery({
     queryKey: ['deals'],
@@ -270,10 +417,10 @@ const Pipeline = () => {
                   const style = STAGE_STYLES[stage];
 
                   return (
-                    <Link
+                    <div
                       key={deal.id}
-                      to={deal.lead ? `/leads/${deal.lead.id || deal.lead._id}` : '#'}
-                      className={`bg-white p-4 rounded-xl shadow-sm border-2 ${style.border} hover:shadow-md transition-all group block relative overflow-hidden ${draggedDealId === deal.id ? 'opacity-40' : ''
+                      onClick={() => handleEditDeal(deal)}
+                      className={`bg-white p-4 rounded-xl shadow-sm border-2 ${style.border} hover:shadow-md transition-all group block relative overflow-hidden cursor-pointer ${draggedDealId === deal.id ? 'opacity-40' : ''
                         }`}
                       draggable
                       onDragStart={(e) => handleDragStart(e, deal.id)}
@@ -321,7 +468,7 @@ const Pipeline = () => {
                           {stage.replace('_', ' ')}
                         </span>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -342,6 +489,14 @@ const Pipeline = () => {
       )}
 
       <NewDealModal isOpen={isNewDealModalOpen} onClose={() => setIsNewDealModalOpen(false)} />
+      <EditDealModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedDeal(null);
+        }}
+        deal={selectedDeal}
+      />
     </div>
   );
 };
