@@ -203,9 +203,16 @@ export const activityService = {
 
 // --- Notification Service (remains the same) ---
 export const notificationService = {
-  getNotifications: async () => {
-    const res = await apiService.get('/notifications');
+  getNotifications: async (params = {}) => {
+    const res = await apiService.get('/notifications', { params });
     const list = normalizeList(res).map(n => ({ ...n, id: n._id }));
+
+    // Attach metadata to the array while keeping it as a standard array for compatibility
+    if (res.data && res.data.total !== undefined) {
+      list.total = res.data.total;
+      list.page = res.data.page;
+      list.limit = res.data.limit;
+    }
     return list;
   },
   markNotificationRead: async (id) => {

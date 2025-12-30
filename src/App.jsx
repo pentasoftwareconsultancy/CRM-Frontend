@@ -1,7 +1,7 @@
 // src/App.jsx (Finalized Logout Navigation)
 import React, { useEffect, useState } from 'react';
 // Import Router outside, use Routes/Route/Navigate inside a component descendant of Router.
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'; 
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
@@ -29,7 +29,7 @@ const AppLayout = () => {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+
   const navigate = useNavigate(); // Hook available because AppLayout is inside Router
 
   useEffect(() => {
@@ -38,37 +38,37 @@ const AppLayout = () => {
 
   const handleLogout = async () => {
     await logout();
-    // Explicitly navigate to root after clearing state
-    navigate('/', { replace: true }); 
+    // Use window.location.href to force a full page reload and clear all states/caches
+    window.location.href = '/';
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400">Loading NexusCRM...</div>;
 
   if (!user) return <Login />;
 
-  const contentMarginClass = isCollapsed ? 'lg:ml-20' : 'lg:ml-64';
+  const contentMarginClass = isCollapsed ? 'lg:ml-20' : 'lg:ml-50';
 
   return (
-    <div className="flex bg-slate-50 min-h-screen font-sans">
+    <div className="flex bg-slate-50 h-screen font-sans overflow-hidden">
       {/* Mobile Overlay */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/50 lg:hidden" 
+        <div
+          className="fixed inset-0 z-50 bg-black/50 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
 
-      <Sidebar 
-        onLogout={handleLogout} 
-        userRole={user.role} 
-        isMobileOpen={isSidebarOpen} 
+      <Sidebar
+        onLogout={handleLogout}
+        userRole={user.role}
+        isMobileOpen={isSidebarOpen}
         setIsMobileOpen={setIsSidebarOpen}
-        isCollapsed={isCollapsed} 
-        setIsCollapsed={setIsCollapsed} 
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${contentMarginClass} ml-0`}>
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
         <TopBar user={user} onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-auto bg-slate-50/50">
           <Routes>
@@ -80,6 +80,7 @@ const AppLayout = () => {
             <Route path="/followups" element={<FollowUps />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/customers" element={<Customers />} />
+            <Route path="/customers/:id" element={<LeadDetail />} />
             <Route path="/profile" element={<Profile currentUser={user} />} />
             <Route
               path="/admin/users"
