@@ -177,7 +177,6 @@ const Login = () => {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  minLength="6"
                   className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-slate-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-800"
                   placeholder="••••••••"
                   value={password}
