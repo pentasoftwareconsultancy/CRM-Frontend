@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dealService, leadService } from '../services/api';
-import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, Circle, ExternalLink } from 'lucide-react';
+import { dealService, leadService, userService } from '../services/api';
+import { useAuthStore } from '../store/authStore';
+import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, Circle, ExternalLink, Shield } from 'lucide-react';
 import Modal from '../components/Modal';
 import { Link } from 'react-router-dom';
 
@@ -99,6 +100,10 @@ const NewDealModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (formData.value <= 0) {
+      alert('Deal value must be greater than zero.');
+      return;
+    }
     createDealMutation.mutate(formData);
   };
 
@@ -157,9 +162,11 @@ const NewDealModal = ({ isOpen, onClose }) => {
 
 const EditDealModal = ({ isOpen, onClose, deal }) => {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuthStore();
   const [formData, setFormData] = useState({
     title: '',
     value: 0,
+    owner: '',
     currency: 'INR',
     stage: '',
     expectedCloseDate: '',
@@ -171,6 +178,7 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
       setFormData({
         title: deal.title || '',
         value: deal.value || 0,
+        owner: deal.owner?._id || deal.owner || '',
         currency: deal.currency || 'INR',
         stage: deal.stage || '',
         expectedCloseDate: deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toISOString().substring(0, 10) : '',
@@ -178,6 +186,12 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
       });
     }
   }, [deal]);
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => userService.getUsers().then(res => res.data),
+    enabled: isOpen
+  });
 
   const updateDealMutation = useMutation({
     mutationFn: (updates) => dealService.updateDeal(deal.id, updates),
@@ -198,6 +212,11 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (formData.value <= 0) {
+      alert('Deal value must be greater than zero.');
+      return;
+    }
 
     // If the stage is terminal, use the closeDeal API
     if (['WON', 'LOST', 'CANCELLED'].includes(formData.stage) && formData.stage !== deal.stage) {
@@ -250,6 +269,23 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
               onChange={e => setFormData({ ...formData, stage: e.target.value })}
             >
               {STAGES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned To</label>
+          <div className="relative flex items-center">
+            <Shield size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
+            <select
+              className="w-full rounded-lg border-slate-300 border pl-10 pr-3 py-2 text-sm"
+              value={formData.owner}
+              onChange={e => setFormData({ ...formData, owner: e.target.value })}
+            >
+              <option value={currentUser?.id || currentUser?._id}>(Self) {currentUser?.name}</option>
+              {users.filter(u => u.id !== currentUser?.id && u.id !== currentUser?._id).map(u => (
+                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+              ))}
             </select>
           </div>
         </div>
@@ -376,7 +412,7 @@ const Pipeline = () => {
   if (loadingDeals) return <div className="p-12 text-center text-slate-500">Loading pipeline...</div>;
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col p-6 overflow-hidden bg-white">
+    <div className="h-[calc(100vh-64px)] flex flex-col p-4 overflow-hidden bg-white">
       <div className="flex justify-between items-center mb-6 px-2">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Sales Pipeline</h2>
@@ -389,13 +425,13 @@ const Pipeline = () => {
         </button>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4 h-full kanban-scroll">
+      <div className="flex gap-2 overflow-x-auto pb-4 h-full kanban-scroll">
         {STAGES.map(stage => {
           const style = STAGE_STYLES[stage];
           return (
             <div
               key={stage}
-              className={`min-w-[300px] flex flex-col h-full rounded-xl border ${style.bg} ${style.border} p-3 transition-colors`}
+              className={`min-w-[280px] flex flex-col h-full rounded-xl border ${style.bg} ${style.border} p-2 transition-colors`}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, stage)}
             >
@@ -411,7 +447,7 @@ const Pipeline = () => {
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1 kanban-scroll">
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 kanban-scroll">
                 {dealsByStage[stage].map(deal => {
                   // We use the 'style' variable defined in the outer map (STAGES.map)
                   const style = STAGE_STYLES[stage];
@@ -454,7 +490,7 @@ const Pipeline = () => {
 
                       {/* 3. The Amount/Price now uses the Stage Color and bolder font */}
                       <div className={`text-xl font-black ${style.text} tracking-tight`}>
-                        {deal.currency || 'INR'}{deal.value.toLocaleString()}
+                        ₹{deal.value.toLocaleString()}
                       </div>
 
                       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">

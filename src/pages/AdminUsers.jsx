@@ -196,22 +196,22 @@ const AdminUsers = () => {
           <div className="p-12 text-center text-slate-500">No users found.</div>
         ) : (
           <div className="overflow-x-auto">
-            {/* MIN-W FIX APPLIED */}
-            <table className="w-full min-w-[850px] text-left border-collapse">
+            <table className="w-full min-w-[1000px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="px-6 py-4">User</th>
-                  <th className="px-6 py-4">Role</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Designation</th>
-                  <th className="px-6 py-4">Dates</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-3 py-3">User</th>
+                  <th className="px-3 py-3">Role</th>
+                  <th className="px-3 py-3">Status</th>
+                  <th className="px-3 py-3">Designation</th>
+                  <th className="px-3 py-3">Created Date</th>
+                  <th className="px-3 py-3">Updated Date</th>
+                  <th className="px-3 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
                         <img
                           src={u.avatar || `https://ui-avatars.com/api/?name=${u.name.replace(' ', '+')}&background=random`}
@@ -224,13 +224,13 @@ const AdminUsers = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <div className="flex items-center gap-2 capitalize text-sm font-medium text-slate-700">
                         {getRoleIcon(u.role)}
                         {u.role}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold border capitalize ${u.status === 'active'
                         ? 'bg-green-100 text-green-700 border-green-200'
                         : 'bg-slate-100 text-slate-500 border-slate-200'
@@ -238,15 +238,16 @@ const AdminUsers = () => {
                         {u.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
+                    <td className="px-3 py-3 text-sm text-slate-600">
                       {u.designation || '-'}
                     </td>
-                    {/* Dates Column */}
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      <p>Created: {new Date(u.createdAt).toLocaleDateString()}</p>
-                      <p>Updated: {new Date(u.updatedAt).toLocaleDateString()}</p>
+                    <td className="px-3 py-3 text-xs text-slate-500">
+                      {new Date(u.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-3 py-3 text-xs text-slate-500">
+                      {new Date(u.updatedAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleOpenModal(u)}

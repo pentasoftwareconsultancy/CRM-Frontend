@@ -1,16 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, Check, Trash2, Calendar, UserPlus, Info, CheckCircle } from 'lucide-react';
+import { Bell, Check, Trash2, Calendar, UserPlus, Info, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { notificationService } from '../services/api';
 
 const Notifications = () => {
   const queryClient = useQueryClient();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit] = useState(10);
 
   // Fetch Notifications
-  const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: notificationService.getNotifications,
+  const { data: notificationsData, isLoading } = useQuery({
+    queryKey: ['notifications', currentPage],
+    queryFn: () => notificationService.getNotifications({ page: currentPage, limit }),
+    keepPreviousData: true,
   });
+
+  const notifications = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.data || []);
+  const totalNotifications = notificationsData?.total || 0;
+  const totalPages = Math.ceil(totalNotifications / limit);
 
   // Mark as Read Mutation
   const markReadMutation = useMutation({
@@ -48,38 +55,63 @@ const Notifications = () => {
             <p className="text-slate-500">Your inbox is empty.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {notifications.map((note) => (
-              <div 
-                key={note.id} 
-                className={`p-6 transition-colors flex items-center justify-between ${!note.isRead ? 'bg-blue-50/30' : 'hover:bg-slate-50'}`}
-              >
-                <div className="flex gap-4 items-start">
-                  <div className="mt-1">
-                    {getIcon(note.type)}
+          <>
+            <div className="divide-y divide-slate-100">
+              {notifications.map((note) => (
+                <div
+                  key={note.id}
+                  className={`p-4 transition-colors flex items-center justify-between ${!note.isRead ? 'bg-blue-50/30' : 'hover:bg-slate-50'}`}
+                >
+                  <div className="flex gap-4 items-start">
+                    <div className="mt-1">
+                      {getIcon(note.type)}
+                    </div>
+                    <div>
+                      <p className={`text-sm ${!note.isRead ? 'text-slate-900 font-semibold' : 'text-slate-600'}`}>
+                        {note.message}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {new Date(note.createdAt).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className={`text-sm ${!note.isRead ? 'text-slate-900 font-semibold' : 'text-slate-600'}`}>
-                      {note.message}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {new Date(note.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
 
-                {!note.isRead && (
-                  <button 
-                    onClick={() => markReadMutation.mutate(note.id)}
-                    className="flex items-center gap-2 text-xs font-medium text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <Check size={14} />
-                    Mark Read
-                  </button>
-                )}
+                  {!note.isRead && (
+                    <button
+                      onClick={() => markReadMutation.mutate(note.id)}
+                      className="flex items-center gap-2 text-xs font-medium text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Check size={14} />
+                      Mark Read
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-4">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  className="p-2 rounded-full hover:bg-white border border-transparent disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="text-sm font-semibold text-slate-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="p-2 rounded-full hover:bg-white border border-transparent disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRight size={20} />
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
