@@ -7,6 +7,10 @@ import { Calendar, CheckCircle, Phone, Mail, Users, FileText, AlertCircle, Chevr
 import Modal from '../components/Modal';
 
 const FollowUps = () => {
+  React.useEffect(() => {
+    document.title = 'Follow Ups | NexusCRM';
+  }, []);
+
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('pending'); // pending|overdue|completed
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -165,10 +169,10 @@ const FollowUps = () => {
             {tab}
             {counts[tab] > 0 && (
               <span className={`text-[8px] w-4 h-4 rounded-full flex items-center justify-center transition-all ${tab === 'overdue'
-                  ? 'bg-red-600 text-white font-bold shadow-sm'
-                  : tab === 'completed'
-                    ? 'bg-emerald-500 text-white font-bold shadow-sm'
-                    : 'border border-dashed border-slate-400 text-slate-500 font-bold bg-white'
+                ? 'bg-red-600 text-white font-bold shadow-sm'
+                : tab === 'completed'
+                  ? 'bg-emerald-500 text-white font-bold shadow-sm'
+                  : 'border border-dashed border-slate-400 text-slate-500 font-bold bg-white'
                 }`}>
                 {counts[tab]}
               </span>

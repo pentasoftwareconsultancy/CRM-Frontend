@@ -142,6 +142,12 @@ const LeadDetail = () => {
     updateLeadMutation.mutate(payload);
   };
 
+  useEffect(() => {
+    if (lead) {
+      document.title = `${displayName} | ${isCustomer ? 'Customer' : 'Lead'} Details`;
+    }
+  }, [lead, displayName, isCustomer]);
+
   // --- 5. UI Helpers ---
   if (loadingLead) return <div className="p-12 text-center text-slate-500">Loading {isCustomer ? 'customer' : 'lead'} details...</div>;
   if (!lead) return <div className="p-12 text-center text-red-500">{isCustomer ? 'Customer' : 'Lead'} not found.</div>;
@@ -178,6 +184,16 @@ const LeadDetail = () => {
         >
           <Edit size={16} /> Edit {isCustomer ? 'Customer' : 'Lead'}
         </button>
+      </div>
+
+      <div className="mb-4">
+        <h2 className="text-xl font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          {isCustomer ? (
+            <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg text-xs">Customer Profile</span>
+          ) : (
+            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-xs">Lead Profile</span>
+          )}
+        </h2>
       </div>
 
       {/* Main Info Card */}
