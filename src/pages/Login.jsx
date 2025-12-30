@@ -193,11 +193,6 @@ const Login = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 ml-1">
-              <input type="checkbox" id="remember" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <label htmlFor="remember" className="text-sm text-slate-600 font-medium">Keep me signed in</label>
-            </div>
-
             <button
               type="submit"
               disabled={isLoading}

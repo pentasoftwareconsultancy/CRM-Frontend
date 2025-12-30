@@ -8,16 +8,49 @@ import { notificationService } from '../services/api';
 const TopBar = ({ user, onMenuClick }) => {
   const navigate = useNavigate();
 
+  // Browser Notifications Logic
+  const lastNotifiedId = React.useRef(null);
+
+  React.useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // Polling for notification count
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications_global_count'],
-    queryFn: () => notificationService.getNotifications({ limit: 100 }), // Get more for the badge if needed, or just enough
+    queryFn: () => notificationService.getNotifications({ limit: 10 }), // Smaller limit for polling
     staleTime: 60000,
     refetchInterval: 30000,
   });
 
   const notifications = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.data || []);
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  // Trigger browser notification for any new unread item
+  React.useEffect(() => {
+    if (notifications.length > 0) {
+      const topUnread = notifications.find(n => !n.isRead);
+
+      // Initialize the ref on first load so we don't alert old notifications
+      if (!lastNotifiedId.current) {
+        lastNotifiedId.current = topUnread ? topUnread._id : 'initial';
+        return;
+      }
+
+      if (topUnread && topUnread._id !== lastNotifiedId.current) {
+        // Only notify if window is not focused or just as a redundant alert
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('NexusCRM Update', {
+            body: topUnread.message,
+            icon: '/favicon.ico'
+          });
+        }
+        lastNotifiedId.current = topUnread._id;
+      }
+    }
+  }, [notifications]);
 
   return (
     <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-40 shadow-sm">
