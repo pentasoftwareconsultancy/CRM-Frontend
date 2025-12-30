@@ -10,71 +10,71 @@ import { useAuthStore } from '../store/authStore';
 
 // --- Import Modal Component ---
 const ImportModal = ({ isOpen, onClose }) => {
-    const queryClient = useQueryClient();
-    const [file, setFile] = useState(null);
-    const [uploading, setUploading] = useState(false);
-    
-    const importMutation = useMutation({
-        mutationFn: async (file) => {
-            setUploading(true);
-            const formData = new FormData();
-            formData.append('file', file);
-            return leadService.importLeads(formData); 
-        },
-        onSuccess: (data) => {
-            alert(`Import successful: ${data.successfulImports} leads added, ${data.failedImports} skipped.`);
-            queryClient.invalidateQueries(['leads']);
-            queryClient.invalidateQueries(['notifications_global_count']);
-        },
-        onError: (error) => {
-            const message = error.response?.data?.message || 'Error processing file data. Ensure CSV/Excel columns are correct.';
-            alert(`Import failed: ${message}`);
-        },
-        onSettled: () => {
-            setUploading(false);
-            setFile(null);
-            onClose();
-        }
-    });
+  const queryClient = useQueryClient();
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-    const handleFileUpload = (e) => {
-        if (e.target.files) setFile(e.target.files[0]);
-    };
+  const importMutation = useMutation({
+    mutationFn: async (file) => {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      return leadService.importLeads(formData);
+    },
+    onSuccess: (data) => {
+      alert(`Import successful: ${data.successfulImports} leads added, ${data.failedImports} skipped.`);
+      queryClient.invalidateQueries(['leads']);
+      queryClient.invalidateQueries(['notifications_global_count']);
+    },
+    onError: (error) => {
+      const message = error.response?.data?.message || 'Error processing file data. Ensure CSV/Excel columns are correct.';
+      alert(`Import failed: ${message}`);
+    },
+    onSettled: () => {
+      setUploading(false);
+      setFile(null);
+      onClose();
+    }
+  });
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (file) {
-            importMutation.mutate(file);
-        }
-    };
+  const handleFileUpload = (e) => {
+    if (e.target.files) setFile(e.target.files[0]);
+  };
 
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Import Leads (CSV/Excel)">
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="border-2 border-dashed border-slate-300 p-6 text-center rounded-lg bg-slate-50">
-                    <input
-                        type="file"
-                        accept=".csv"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="file-upload"
-                    />
-                    <label htmlFor="file-upload" className="cursor-pointer text-primary font-medium hover:text-blue-600">
-                        <Upload size={20} className="mx-auto mb-2 text-slate-400" />
-                        {file ? `File Selected: ${file.name}` : "Click to select CSV file"}
-                    </label>
-                    <p className="text-sm text-slate-500 mt-2">Max size 5MB. Must contain 'name', 'email', 'company' columns.</p>
-                </div>
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (file) {
+      importMutation.mutate(file);
+    }
+  };
 
-                <div className="flex justify-end pt-4 border-t border-slate-100">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
-                    <button type="submit" disabled={!file || uploading} className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20 disabled:opacity-50">
-                        {uploading ? 'Uploading...' : 'Start Import'}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-    );
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Import Leads (CSV/Excel)">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="border-2 border-dashed border-slate-300 p-6 text-center rounded-lg bg-slate-50">
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleFileUpload}
+            className="hidden"
+            id="file-upload"
+          />
+          <label htmlFor="file-upload" className="cursor-pointer text-primary font-medium hover:text-blue-600">
+            <Upload size={20} className="mx-auto mb-2 text-slate-400" />
+            {file ? `File Selected: ${file.name}` : "Click to select CSV file"}
+          </label>
+          <p className="text-sm text-slate-500 mt-2">Max size 5MB. Must contain 'name', 'email', 'company' columns.</p>
+        </div>
+
+        <div className="flex justify-end pt-4 border-t border-slate-100">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
+          <button type="submit" disabled={!file || uploading} className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20 disabled:opacity-50">
+            {uploading ? 'Uploading...' : 'Start Import'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 };
 
 
@@ -83,30 +83,30 @@ const Leads = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [modalError, setModalError] = useState(''); 
-  
+  const [modalError, setModalError] = useState('');
+
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit, setLimit] = useState(10); 
+  const [limit, setLimit] = useState(10);
 
   const initialFormState = { name: '', email: '', phone: '', company: '', status: 'new', source: 'website', budget: 0, assignedTo: '', city: '', description: '' };
   const [formData, setFormData] = useState(initialFormState);
 
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState({ status: '', source: '', assignedTo: '' });
-  
-  const { data: users = [], isLoading: loadingUsers } = useQuery({ 
-    queryKey: ['assignees'], 
+
+  const { data: users = [], isLoading: loadingUsers } = useQuery({
+    queryKey: ['assignees'],
     queryFn: userService.getAssignees,
   });
 
   const { data: leadsData, isLoading: loadingLeads, isFetching } = useQuery({
     queryKey: ['leads', { searchTerm, filters: activeFilters, currentPage, limit }],
-    queryFn: () => leadService.getLeads({ 
-        search: searchTerm, status: activeFilters.status, source: activeFilters.source, assignedTo: activeFilters.assignedTo, page: currentPage, limit: limit
+    queryFn: () => leadService.getLeads({
+      search: searchTerm, status: activeFilters.status, source: activeFilters.source, assignedTo: activeFilters.assignedTo, page: currentPage, limit: limit
     }),
     placeholderData: (previousData) => previousData,
     keepPreviousData: true,
@@ -118,11 +118,11 @@ const Leads = () => {
 
   const leadMutation = useMutation({
     mutationFn: (data) => editingId ? leadService.updateLead(editingId, data) : leadService.addLead(data),
-    onSuccess: () => { 
-        queryClient.invalidateQueries(['leads']); 
-        queryClient.invalidateQueries(['notifications_global_count']);
-        setIsModalOpen(false); 
-        setModalError(''); 
+    onSuccess: () => {
+      queryClient.invalidateQueries(['leads']);
+      queryClient.invalidateQueries(['notifications_global_count']);
+      setIsModalOpen(false);
+      setModalError('');
     },
     onError: (error) => { setModalError(error.response?.data?.message || 'Operation Failed: Check if email/phone already exists.'); }
   });
@@ -152,7 +152,7 @@ const Leads = () => {
       alert("Export successful.");
     },
     onError: (error) => {
-        alert("Export failed: Server error or unauthorized.");
+      alert("Export failed: Server error or unauthorized.");
     },
   });
 
@@ -160,30 +160,30 @@ const Leads = () => {
 
   const handleDeleteLead = (leadId, leadName) => {
     if (user.role !== 'admin' && user.role !== 'manager') {
-        return alert("You must be an Admin or Manager to delete a lead.");
+      return alert("You must be an Admin or Manager to delete a lead.");
     }
     if (window.confirm(`Are you sure you want to soft-delete the lead: ${leadName}?`)) {
-        deleteMutation.mutate(leadId);
+      deleteMutation.mutate(leadId);
     }
   };
 
   const handleOpenModal = (lead = null) => {
-    setModalError(''); 
+    setModalError('');
     if (lead) {
       setEditingId(lead.id);
-      
+
       const assignedId = lead.assignedTo ? (lead.assignedTo._id || lead.assignedTo) : '';
 
       setFormData({
-        name: lead.name, email: lead.email, phone: lead.phone, company: lead.company, 
-        status: lead.status, source: lead.source, budget: lead.budget || 0, 
-        assignedTo: assignedId, 
-        city: lead.city || '', 
+        name: lead.name, email: lead.email, phone: lead.phone, company: lead.company,
+        status: lead.status, source: lead.source, budget: lead.budget || 0,
+        assignedTo: assignedId,
+        city: lead.city || '',
         description: lead.description || ''
       });
     } else {
       setEditingId(null);
-      setFormData({...initialFormState, assignedTo: user?.id || ''});
+      setFormData({ ...initialFormState, assignedTo: user?.id || '' });
     }
     setIsModalOpen(true);
   };
@@ -194,36 +194,36 @@ const Leads = () => {
 
     // --- Client-Side Validation ---
     if (!formData.name || !formData.company || !formData.email || !formData.phone) {
-        return setModalError('Name, Company, Email, and Phone are required fields.');
+      return setModalError('Name, Company, Email, and Phone are required fields.');
     }
-    
+
     // Simple email regex check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-        return setModalError('Please enter a valid email address.');
+      return setModalError('Please enter a valid email address.');
     }
 
-    // Phone number validation (simple pattern allowing digits/dashes/spaces)
-    const phoneRegex = /^[0-9\s-]{10}$/;
-    if (!phoneRegex.test(formData.phone)) {
-        return setModalError('Please enter a valid phone number (10 digits).');
+    // Phone number validation (10 digits, no leading 0)
+    const phoneDigits = formData.phone.replace(/[\s-]/g, '');
+    if (!/^[1-9][0-9]{9}$/.test(phoneDigits)) {
+      return setModalError('Please enter a valid 10-digit phone number (cannot start with 0).');
     }
-    
-    if (Number(formData.budget) < 0) {
-        return setModalError('Budget cannot be negative.');
+
+    if (Number(formData.budget) <= 0) {
+      return setModalError('Budget must be greater than zero.');
     }
     // --- End Validation ---
 
     let finalDescription = formData.description;
     if (formData.source === 'other' && formData.customSourceDetail) {
-        finalDescription = `Custom Source: ${formData.customSourceDetail}. ${formData.description}`;
+      finalDescription = `Custom Source: ${formData.customSourceDetail}. ${formData.description}`;
     }
 
     const payload = {
-        ...formData,
-        budget: Number(formData.budget),
-        description: finalDescription,
-        assignedTo: formData.assignedTo || user.id
+      ...formData,
+      budget: Number(formData.budget),
+      description: finalDescription,
+      assignedTo: formData.assignedTo || user?._id || user?.id
     };
     delete payload.customSourceDetail;
     // Enforce: Do not allow clients to change lead status via create/edit modal
@@ -237,7 +237,7 @@ const Leads = () => {
 
     leadMutation.mutate(payload);
   };
-  
+
   const clearFilters = () => {
     setActiveFilters({ status: '', source: '', assignedTo: '' });
     setSearchTerm('');
@@ -269,34 +269,34 @@ const Leads = () => {
         </div>
         {/* Button Group: Stacks on small screens */}
         <div className="flex gap-3 flex-wrap justify-end">
-            <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
-                disabled={isLoading}
-            >
-                <Upload size={18} />
-                <span className="hidden sm:inline">Import</span>
-            </button>
-            <button
-                onClick={handleExport}
-                className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
-                disabled={isLoading}
-            >
-                <Download size={18} />
-                {exportMutation.isPending ? 'Exporting...' : <span className="hidden sm:inline">Export</span>}
-            </button>
-            <button 
-              onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 text-white bg-blue-900 hover:bg-blue-700 px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/20"
-              disabled={isLoading}
-            >
-              <Plus size={18} />
-              <span className="hidden sm:inline">Add New Lead</span>
-              <span className="sm:hidden">Add Lead</span>
-            </button>
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
+            disabled={isLoading}
+          >
+            <Upload size={18} />
+            <span className="hidden sm:inline">Import</span>
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
+            disabled={isLoading}
+          >
+            <Download size={18} />
+            {exportMutation.isPending ? 'Exporting...' : <span className="hidden sm:inline">Export</span>}
+          </button>
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 text-white bg-blue-900 hover:bg-blue-700 px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/20"
+            disabled={isLoading}
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">Add New Lead</span>
+            <span className="sm:hidden">Add Lead</span>
+          </button>
         </div>
       </div>
-      
+
       <div className="space-y-4 mb-6">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
@@ -309,11 +309,10 @@ const Leads = () => {
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
             />
           </div>
-          <button 
+          <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${
-              showFilters ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${showFilters ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
           >
             <Filter size={16} />
             Filters
@@ -325,54 +324,54 @@ const Leads = () => {
 
         {showFilters && (
           <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in slide-in-from-top-2">
-             <div className="flex justify-between items-center mb-4">
-               <h3 className="text-sm font-bold text-slate-700">Filter Leads</h3>
-               <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1">
-                 <X size={12} /> Clear all
-               </button>
-             </div>
-             {/* Stacks on mobile */}
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div>
-                 <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
-                 <select 
-                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                   value={activeFilters.status}
-                   onChange={(e) => setActiveFilters({...activeFilters, status: e.target.value})}
-                 >
-                   <option value="">All Statuses</option>
-                   {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
-                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                   ))}
-                 </select>
-               </div>
-               <div>
-                 <label className="block text-xs font-semibold text-slate-500 mb-1">Source</label>
-                 <select 
-                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                   value={activeFilters.source}
-                   onChange={(e) => setActiveFilters({...activeFilters, source: e.target.value})}
-                 >
-                   <option value="">All Sources</option>
-                   {['website', 'referral', 'call', 'other'].map(s => (
-                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                   ))}
-                 </select>
-               </div>
-               <div>
-                 <label className="block text-xs font-semibold text-slate-500 mb-1">Assigned User</label>
-                 <select 
-                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                   value={activeFilters.assignedTo}
-                   onChange={(e) => setActiveFilters({...activeFilters, assignedTo: e.target.value})}
-                 >
-                   <option value="">All Users</option>
-                   {users.map(u => (
-                     <option key={u.id} value={u.id}>{u.name}</option>
-                   ))}
-                 </select>
-               </div>
-             </div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-bold text-slate-700">Filter Leads</h3>
+              <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1">
+                <X size={12} /> Clear all
+              </button>
+            </div>
+            {/* Stacks on mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                  value={activeFilters.status}
+                  onChange={(e) => setActiveFilters({ ...activeFilters, status: e.target.value })}
+                >
+                  <option value="">All Statuses</option>
+                  {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Source</label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                  value={activeFilters.source}
+                  onChange={(e) => setActiveFilters({ ...activeFilters, source: e.target.value })}
+                >
+                  <option value="">All Sources</option>
+                  {['website', 'referral', 'call', 'other'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Assigned User</label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                  value={activeFilters.assignedTo}
+                  onChange={(e) => setActiveFilters({ ...activeFilters, assignedTo: e.target.value })}
+                >
+                  <option value="">All Users</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -386,13 +385,14 @@ const Leads = () => {
             <table className="w-full min-w-[1200px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="px-6 py-4">Lead Info</th>
-                  <th className="px-6 py-4">Contact</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Budget</th>
-                  <th className="px-6 py-4">Owner</th> 
-                  <th className="px-6 py-4">Dates</th> 
-                  <th className="px-6 py-4 text-left">Actions</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lead Info</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lead Status</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Budget</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned To</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Created Date</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Updated Date</th>
+                  <th className="px-3 py-3 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -401,34 +401,36 @@ const Leads = () => {
 
                   return (
                     <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20 flex-shrink-0">
+                      <td className="p-0">
+                        <Link to={`/leads/${lead.id}`} className="flex items-center gap-3 px-3 py-3 h-full w-full hover:bg-blue-50/50 transition-colors group">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20 flex-shrink-0 group-hover:scale-105 transition-transform">
                             {lead.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800">{lead.name}</p>
+                            <span className="font-semibold text-slate-800 group-hover:text-primary group-hover:underline transition-colors">
+                              {lead.name}
+                            </span>
                             <p className="text-xs text-slate-500 font-medium">{lead.company}</p>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Mail size={14} className="text-slate-400" /> <span className="truncate">{lead.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Phone size={14} className="text-slate-400" /> {lead.phone}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Mail size={14} className="text-slate-400" /> <span className="truncate">{lead.email}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Phone size={14} className="text-slate-400" /> {lead.phone}
-                            </div>
-                          </div>
+                      <td className="px-3 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border capitalize ${getStatusColor(lead.status)}`}>
+                          {lead.status}
+                        </span>
+                        <div className="text-xs text-slate-400 mt-1 pl-1 capitalize">Via {lead.source}</div>
                       </td>
-                      <td className="px-6 py-4">
-                         <span className={`px-3 py-1 rounded-full text-xs font-semibold border capitalize ${getStatusColor(lead.status)}`}>
-                            {lead.status}
-                          </span>
-                          <div className="text-xs text-slate-400 mt-1 pl-1 capitalize">Via {lead.source}</div>
-                      </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3">
                         <div className="flex items-center gap-1 text-slate-700 font-medium">
                           <IndianRupeeIcon size={14} className="text-slate-400" />
                           {lead.budget?.toLocaleString()}
@@ -439,7 +441,7 @@ const Leads = () => {
                           </div>
                         )}
                       </td>
-                        <td className="px-6 py-4">
+                      <td className="px-3 py-3">
                         {owner ? (
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs flex items-center justify-center font-bold">
@@ -450,29 +452,37 @@ const Leads = () => {
                         ) : (
                           <span className="text-xs text-slate-400">Unassigned</span>
                         )}
-                        </td>
-                      {/* Dates Column */}
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                          <p>Created: {new Date(lead.createdAt).toLocaleDateString()}</p>
-                          <p>Updated: {new Date(lead.updatedAt).toLocaleDateString()}</p>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          
-                          <button 
+                      <td className="px-3 py-3 text-xs text-slate-500">
+                        {new Date(lead.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-slate-500">
+                        {new Date(lead.updatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <div className="flex justify-end gap-2 text-right">
+                          <Link
+                            to={`/leads/${lead.id}`}
+                            className="p-1.5 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Lead Details"
+                          >
+                            <Eye size={16} />
+                          </Link>
+
+                          <button
                             className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors relative"
                             title="View Notes & Activities (FR-11)"
                             onClick={() => navigate(`/leads/${lead.id}#notes-section`)}
                           >
                             <MessageSquare size={16} />
                             {lead.notesCount > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                                    {lead.notesCount}
-                                </span>
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                {lead.notesCount}
+                              </span>
                             )}
                           </button>
 
-                          <button 
+                          <button
                             onClick={() => handleOpenModal(lead)}
                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Edit Lead"
@@ -480,9 +490,9 @@ const Leads = () => {
                           >
                             <Edit2 size={16} />
                           </button>
-                          
+
                           {canDelete && (
-                            <button 
+                            <button
                               onClick={(e) => { e.preventDefault(); handleDeleteLead(lead.id, lead.name); }}
                               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Delete Lead"
@@ -491,13 +501,6 @@ const Leads = () => {
                               <Trash2 size={16} />
                             </button>
                           )}
-                          
-                          <Link 
-                            to={`/leads/${lead.id}`} 
-                            className="inline-flex items-center gap-1 text-primary hover:text-blue-700 text-sm font-medium hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            <Eye size={16} /> View
-                          </Link>
                         </div>
                       </td>
                     </tr>
@@ -506,15 +509,15 @@ const Leads = () => {
                 {currentLeads.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                       {searchTerm || activeFilters.status || activeFilters.source || activeFilters.assignedTo ? (
+                      {searchTerm || activeFilters.status || activeFilters.source || activeFilters.assignedTo ? (
                         <div className="flex flex-col items-center justify-center">
                           <Search size={48} className="text-slate-200 mb-4" />
                           <p className="text-lg font-medium text-slate-600">No leads match your criteria</p>
                           <button onClick={clearFilters} className="mt-4 text-primary hover:underline text-sm font-medium">Clear filters</button>
                         </div>
-                       ) : (
-                           'No leads found. Add a new lead to get started.'
-                       )}
+                      ) : (
+                        'No leads found. Add a new lead to get started.'
+                      )}
                     </td>
                   </tr>
                 )}
@@ -527,74 +530,74 @@ const Leads = () => {
       {/* Pagination Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-center mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200 gap-3">
         <p className="text-sm text-slate-600">
-            Showing {Math.min(totalLeads, (currentPage - 1) * limit + 1)} - {Math.min(totalLeads, currentPage * limit)} of {totalLeads} leads
+          Showing {Math.min(totalLeads, (currentPage - 1) * limit + 1)} - {Math.min(totalLeads, currentPage * limit)} of {totalLeads} leads
         </p>
         <div className="flex items-center gap-4">
-             <select
-                value={limit}
-                onChange={(e) => { setLimit(Number(e.target.value)); setCurrentPage(1); }}
-                className="rounded-lg border border-slate-300 text-sm py-1"
-                disabled={isLoading}
-            >
-                {[10, 20, 50].map(l => <option key={l} value={l}>{l} per page</option>)}
-            </select>
-            <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1 || isLoading}
-                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-            >
-                <ChevronLeft size={16} />
-            </button>
-            <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
-            <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages || isLoading || totalLeads === 0}
-                className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-            >
-                <ChevronRight size={16} />
-            </button>
+          <select
+            value={limit}
+            onChange={(e) => { setLimit(Number(e.target.value)); setCurrentPage(1); }}
+            className="rounded-lg border border-slate-300 text-sm py-1"
+            disabled={isLoading}
+          >
+            {[10, 20, 50].map(l => <option key={l} value={l}>{l} per page</option>)}
+          </select>
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1 || isLoading}
+            className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages || isLoading || totalLeads === 0}
+            className="p-2 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       </div>
 
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Edit Lead" : "Create New Lead"}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          
+
           {modalError && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center gap-2">
-                  <AlertCircle size={16} />
-                  <span>{modalError}</span>
-              </div>
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-center gap-2">
+              <AlertCircle size={16} />
+              <span>{modalError}</span>
+            </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
-              <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Company *</label>
-              <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+              <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-              <input required type="email" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              <input required type="email" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
-              <input required type="tel" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              <input required type="tel" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Budget</label>
-              <input type="number" min="0" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})} />
+              <input type="number" min="0" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.budget} onChange={e => setFormData({ ...formData, budget: e.target.value })} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-              <input type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
+              <input type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -609,43 +612,44 @@ const Leads = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:focus:border-primary outline-none capitalize" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value, customSourceDetail: ''})}>
+              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:focus:border-primary outline-none capitalize" value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value, customSourceDetail: '' })}>
                 {['website', 'referral', 'call', 'other'].map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                 ))}
               </select>
               {/* Conditional Input for Custom Source */}
               {formData.source === 'other' && (
-                  <input 
-                      type="text"
-                      className="w-full rounded-lg border-slate-300 border px-3 py-2 mt-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                      placeholder="Enter custom source name (e.g., Facebook Ad)"
-                      value={formData.customSourceDetail || ''}
-                      onChange={e => setFormData({...formData, customSourceDetail: e.target.value})}
-                  />
+                <input
+                  type="text"
+                  className="w-full rounded-lg border-slate-300 border px-3 py-2 mt-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  placeholder="Enter custom source name (e.g., Facebook Ad)"
+                  value={formData.customSourceDetail || ''}
+                  onChange={e => setFormData({ ...formData, customSourceDetail: e.target.value })}
+                />
               )}
             </div>
           </div>
-          
+
           <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Assigned To</label>
-              <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.assignedTo} onChange={e => setFormData({...formData, assignedTo: e.target.value})}>
-                <option value="">(Self) {user?.name || 'Select User...'}</option> 
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                ))}
-              </select>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Assigned To</label>
+            <select className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}>
+              <option value="">Unassigned</option>
+              <option value={user?.id || user?._id || ''}>(Self) {user?.name}</option>
+              {users.filter(u => u.id !== (user?.id || user?._id)).map(u => (
+                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+              ))}
+            </select>
           </div>
 
           <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-              <textarea 
-                className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none" 
-                rows="3"
-                value={formData.description} 
-                onChange={e => setFormData({...formData, description: e.target.value})}
-                placeholder="Enter lead details, requirements, etc."
-              ></textarea>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <textarea
+              className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+              rows="3"
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Enter lead details, requirements, etc."
+            ></textarea>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

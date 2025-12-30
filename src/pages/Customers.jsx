@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerService } from '../services/api';
 import Modal from '../components/Modal';
-import { Plus, Search, Building, Mail, Phone, Edit2, Link as LinkIcon, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Building, Mail, Phone, Edit2, Link as LinkIcon, User as UserIcon, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const Customers = () => {
     const queryClient = useQueryClient();
@@ -69,6 +70,14 @@ const Customers = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        if (formData.phone) {
+            const phoneDigits = formData.phone.replace(/[\s-]/g, '');
+            if (!/^[1-9][0-9]{9}$/.test(phoneDigits)) {
+                return alert('Please enter a valid 10-digit phone number (cannot start with 0).');
+            }
+        }
+
         customerMutation.mutate(formData);
     };
 
@@ -113,32 +122,35 @@ const Customers = () => {
                     <div className="p-12 text-center text-slate-500">No customers found.</div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full min-w-[1000px] text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                    <th className="px-6 py-4">Company</th>
-                                    <th className="px-6 py-4">Primary Contact</th>
-                                    <th className="px-6 py-4">Contact Info</th>
-                                    <th className="px-6 py-4">Website</th>
-                                    <th className="px-6 py-4">Dates</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
+                                    <th className="px-3 py-3">Company</th>
+                                    <th className="px-3 py-3">Primary Contact</th>
+                                    <th className="px-3 py-3">Contact Info</th>
+                                    <th className="px-3 py-3">Website</th>
+                                    <th className="px-3 py-3">Converted Date</th>
+                                    <th className="px-3 py-3">Updated Date</th>
+                                    <th className="px-3 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {customers.map((c) => (
                                     <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <Building size={20} className="text-indigo-500" />
-                                                <p className="font-semibold text-slate-800">{c.name}</p>
-                                            </div>
+                                        <td className="p-0">
+                                            <Link to={`/customers/${c.id}`} className="flex items-center gap-3 px-3 py-3 h-full w-full hover:bg-blue-50/50 transition-colors group">
+                                                <Building size={20} className="text-indigo-500 group-hover:text-primary transition-colors" />
+                                                <span className="font-semibold text-slate-800 group-hover:text-primary group-hover:underline">
+                                                    {c.name}
+                                                </span>
+                                            </Link>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 py-3">
                                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                                 <UserIcon size={14} className="text-slate-400" /> {c.primaryContact}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 space-y-1">
+                                        <td className="px-3 py-3 space-y-1">
                                             <div className="flex items-center gap-2 text-xs text-slate-500">
                                                 <Mail size={12} className="text-slate-400" /> {c.email}
                                             </div>
@@ -146,25 +158,36 @@ const Customers = () => {
                                                 <Phone size={12} className="text-slate-400" /> {c.phone}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-blue-500 hover:underline">
+                                        <td className="px-3 py-3 text-sm text-blue-500 hover:underline">
                                             {c.website ? (
                                                 <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
                                                     <LinkIcon size={14} /> {c.website.replace(/https?:\/\//, '').substring(0, 20)}...
                                                 </a>
                                             ) : '-'}
                                         </td>
-                                        {/* Dates Column */}
-                                        <td className="px-6 py-4 text-xs text-slate-500">
-                                            <p>Converted: {new Date(c.convertedDate).toLocaleDateString()}</p>
-                                            <p>Updated: {new Date(c.updatedAt).toLocaleDateString()}</p>
+                                        <td className="px-3 py-3 text-xs text-slate-500">
+                                            {new Date(c.convertedDate).toLocaleDateString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => handleOpenModal(c)}
-                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            >
-                                                <Edit2 size={16} />
-                                            </button>
+                                        <td className="px-3 py-3 text-xs text-slate-500">
+                                            {new Date(c.updatedAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-3 py-3 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Link
+                                                    to={`/customers/${c.id}`}
+                                                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="View Customer Details"
+                                                >
+                                                    <Eye size={16} />
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleOpenModal(c)}
+                                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Edit Customer"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
