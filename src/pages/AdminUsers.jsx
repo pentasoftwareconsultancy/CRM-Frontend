@@ -1,8 +1,8 @@
 // src/pages/AdminUsers.jsx (Final)
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userService } from '../services/api';
+import { userService, notificationService } from '../services/api';
 import Modal from '../components/Modal';
 import { UserPlus, Search, Edit2, Trash2, Shield, ShieldCheck, User as UserIcon, ChevronLeft, ChevronRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -10,6 +10,15 @@ import { useAuthStore } from '../store/authStore';
 const AdminUsers = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  // Check for due follow-ups when admin visits this page
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      notificationService.checkDueFollowUps().catch(err => {
+        console.log('Failed to check due follow-ups:', err);
+      });
+    }
+  }, [user]);
 
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);

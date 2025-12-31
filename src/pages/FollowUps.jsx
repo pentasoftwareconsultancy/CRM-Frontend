@@ -2,14 +2,24 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { activityService, leadService, userService } from '../services/api';
+import { activityService, leadService, userService, notificationService } from '../services/api';
 import { Calendar, CheckCircle, Phone, Mail, Users, FileText, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Modal from '../components/Modal';
+import { useAuthStore } from '../store/authStore';
 
 const FollowUps = () => {
   React.useEffect(() => {
     document.title = 'Follow Ups | NexusCRM';
   }, []);
+  const { user } = useAuthStore();
+  // Check for due follow-ups when admin/manager visits this page
+  React.useEffect(() => {
+    if (user && (user.role === 'admin' || user.role === 'manager')) {
+      notificationService.checkDueFollowUps().catch(err => {
+        console.log('Failed to check due follow-ups:', err);
+      });
+    }
+  }, [user]);
 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('pending'); // pending|overdue|completed

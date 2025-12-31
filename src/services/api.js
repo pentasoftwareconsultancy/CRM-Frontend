@@ -219,6 +219,10 @@ export const notificationService = {
     const res = await apiService.patch(`/notifications/${id}/read`);
     return res.data;
   },
+  checkDueFollowUps: async () => {
+    const res = await apiService.post('/notifications/check-due-followups');
+    return res.data;
+  },
 };
 
 // --- Reports & Dashboard (8.0) ---
