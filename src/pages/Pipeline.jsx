@@ -8,7 +8,16 @@ import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, 
 import Modal from '../components/Modal';
 import { Link } from 'react-router-dom';
 
-const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'WON', 'LOST', 'CANCELLED'];
+const STAGES = ['NEW', 'CONTACTED_LEAD', 'CONTACTED_DEVELOPER', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'WON', 'LOST', 'CANCELLED'];
+
+// Helper function to format stage names for display
+const formatStageName = (stage) => {
+  const nameMap = {
+    'CONTACTED_LEAD': 'Contacted Lead',
+    'CONTACTED_DEVELOPER': 'Contacted Developer'
+  };
+  return nameMap[stage] || stage.replace(/_/g, ' ');
+};
 
 // --- Color Configuration for Stages ---
 const STAGE_STYLES = {
@@ -19,12 +28,19 @@ const STAGE_STYLES = {
     text: 'text-blue-700',
     accent: 'bg-blue-500'
   },
-  CONTACTED: {
+  CONTACTED_LEAD: {
     bg: 'bg-orange-50/50',
     headerBg: 'bg-orange-100',
     border: 'border-orange-200',
     text: 'text-orange-700',
     accent: 'bg-orange-500'
+  },
+  CONTACTED_DEVELOPER: {
+    bg: 'bg-yellow-50/50',
+    headerBg: 'bg-yellow-100',
+    border: 'border-yellow-200',
+    text: 'text-yellow-700',
+    accent: 'bg-yellow-500'
   },
   QUALIFIED: {
     bg: 'bg-emerald-50/50',
@@ -268,7 +284,7 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
               value={formData.stage}
               onChange={e => setFormData({ ...formData, stage: e.target.value })}
             >
-              {STAGES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+              {STAGES.map(s => <option key={s} value={s}>{formatStageName(s)}</option>)}
             </select>
           </div>
         </div>
@@ -495,7 +511,7 @@ const Pipeline = () => {
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${style.accent}`} />
                   <span className={`font-bold ${style.text} text-xs uppercase tracking-widest`}>
-                    {stage.replace(/_/g, ' ')}
+                    {formatStageName(stage)}
                   </span>
                 </div>
                 <span className={`bg-white/80 px-2 py-0.5 rounded-md text-[10px] font-bold ${style.text} border ${style.border}`}>
@@ -563,7 +579,7 @@ const Pipeline = () => {
 
                         {/* 4. Small stage indicator inside the card */}
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${style.headerBg} ${style.text}`}>
-                          {stage.replace('_', ' ')}
+                          {formatStageName(stage)}
                         </span>
                       </div>
                     </div>

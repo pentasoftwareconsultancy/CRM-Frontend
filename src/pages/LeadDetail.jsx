@@ -141,6 +141,7 @@ const LeadDetail = () => {
 
     updateLeadMutation.mutate(payload);
   };
+  const displayName = isCustomer ? lead.primaryContact : lead.name;
 
   useEffect(() => {
     if (lead) {
@@ -167,7 +168,6 @@ const LeadDetail = () => {
   const leadOwnerName = owner?.name || 'Unassigned';
 
   // Normalize display fields
-  const displayName = isCustomer ? lead.primaryContact : lead.name;
   const displayCompany = isCustomer ? lead.name : lead.company;
   const displayStatus = lead.status || (isCustomer ? 'WON' : 'new');
 
@@ -254,7 +254,7 @@ const LeadDetail = () => {
                   <div key={deal.id} className="p-4 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors flex justify-between items-center">
                     <div>
                       <p className="font-semibold text-slate-800">{deal.title}</p>
-                      <p className="text-xs text-slate-500 uppercase font-medium">Stage: {deal.stage.replace('_', ' ')}</p>
+                      <p className="text-xs text-slate-500 uppercase font-medium">Stage: {deal.stage === 'CONTACTED_LEAD' ? 'Contacted Lead' : deal.stage === 'CONTACTED_DEVELOPER' ? 'Contacted Developer' : deal.stage.replace('_', ' ')}</p>
                     </div>
                     <div className="font-bold text-slate-700 text-lg">
                       ₹{deal.value?.toLocaleString()}
