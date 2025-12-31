@@ -141,17 +141,19 @@ const LeadDetail = () => {
 
     updateLeadMutation.mutate(payload);
   };
-  const displayName = isCustomer ? lead.primaryContact : lead.name;
 
   useEffect(() => {
     if (lead) {
+      const displayName = isCustomer ? lead.primaryContact : lead.name;
       document.title = `${displayName} | ${isCustomer ? 'Customer' : 'Lead'} Details`;
     }
-  }, [lead, displayName, isCustomer]);
+  }, [lead, isCustomer]);
 
   // --- 5. UI Helpers ---
   if (loadingLead) return <div className="p-12 text-center text-slate-500">Loading {isCustomer ? 'customer' : 'lead'} details...</div>;
   if (!lead) return <div className="p-12 text-center text-red-500">{isCustomer ? 'Customer' : 'Lead'} not found.</div>;
+
+  const displayName = isCustomer ? lead.primaryContact : lead.name;
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {

@@ -382,13 +382,14 @@ const Leads = () => {
           <div className="p-12 text-center text-slate-500">Loading leads data...</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1200px] text-left border-collapse">
+            <table className="w-full min-w-[1400px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lead Info</th>
                   <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
                   <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lead Status</th>
                   <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Budget</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Deals</th>
                   <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned To</th>
                   <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Created Date</th>
                   <th className="px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Updated Date</th>
@@ -440,6 +441,17 @@ const Leads = () => {
                             <MapPin size={12} /> {lead.city}
                           </div>
                         )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            lead.dealsCount > 0 
+                              ? 'bg-green-100 text-green-700 border border-green-200' 
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {lead.dealsCount || 0} Deal{lead.dealsCount !== 1 ? 's' : ''}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-3 py-3">
                         {owner ? (
