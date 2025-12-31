@@ -6,6 +6,7 @@ import { dealService, leadService, userService } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, Circle, ExternalLink, Shield } from 'lucide-react';
 import Modal from '../components/Modal';
+import NewDealModal from '../components/NewDealModal';
 import { Link } from 'react-router-dom';
 
 const STAGES = ['NEW', 'CONTACTED_LEAD', 'CONTACTED_DEVELOPER', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'WON', 'LOST', 'CANCELLED'];
@@ -84,96 +85,6 @@ const STAGE_STYLES = {
     text: 'text-rose-700',
     accent: 'bg-rose-500'
   }
-};
-
-const NewDealModal = ({ isOpen, onClose }) => {
-  const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    leadId: '',
-    title: '',
-    value: 0,
-    currency: 'INR',
-    expectedCloseDate: new Date().toISOString().substring(0, 10),
-  });
-
-  const { data: leads = [], isLoading: loadingLeads } = useQuery({
-    queryKey: ['convertibleLeads'],
-    queryFn: () => leadService.getLeads({ status: 'new|contacted|qualified' }).then(res => res.data),
-  });
-
-  const createDealMutation = useMutation({
-    mutationFn: dealService.createDeal,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['deals']);
-      queryClient.invalidateQueries(['leads']);
-      onClose();
-      setFormData({ leadId: '', title: '', value: 0, currency: 'INR', expectedCloseDate: new Date().toISOString().substring(0, 10) });
-    },
-    onError: (err) => {
-      alert(`Deal creation failed: ${err.response?.data?.message || err.message}`);
-    }
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (formData.value <= 0) {
-      alert('Deal value must be greater than zero.');
-      return;
-    }
-    createDealMutation.mutate(formData);
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Deal">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Select Lead *</label>
-          <select
-            required
-            className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-primary outline-none"
-            value={formData.leadId}
-            onChange={e => setFormData({ ...formData, leadId: e.target.value })}
-            disabled={loadingLeads || createDealMutation.isOnTime}
-          >
-            <option value="">{loadingLeads ? 'Loading Leads...' : 'Select a Lead...'}</option>
-            {leads.map(l => (
-              <option key={l.id} value={l.id}>{l.name} - {l.company} ({l.status})</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Deal Title *</label>
-          <input required type="text" className="w-full rounded-lg border-slate-300 border px-3 py-2" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Value *</label>
-            <input required type="number" min="0" className="w-full rounded-lg border-slate-300 border px-3 py-2" value={formData.value} onChange={e => setFormData({ ...formData, value: Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Expected Close Date</label>
-            <div className="relative flex items-center">
-              <Calendar size={18} className="absolute left-3 text-slate-400 pointer-events-none" />
-              <input
-                type="date"
-                className="w-full rounded-lg border-slate-300 border pl-10 pr-3 py-2"
-                value={formData.expectedCloseDate}
-                onChange={e => setFormData({ ...formData, expectedCloseDate: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-4 border-t border-slate-100">
-          <button type="submit" disabled={createDealMutation.isOnTime} className="px-4 py-2 bg-blue-900 text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
-            {createDealMutation.isOnTime ? 'Creating...' : 'Create Deal'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
 };
 
 const EditDealModal = ({ isOpen, onClose, deal }) => {
@@ -336,10 +247,10 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
           <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg text-sm transition-colors">Cancel</button>
           <button
             type="submit"
-            disabled={updateDealMutation.isOnTime || closeDealMutation.isOnTime}
+            disabled={updateDealMutation.isPending || closeDealMutation.isPending}
             className="px-6 py-2 bg-blue-900 text-white font-bold rounded-lg hover:bg-blue-600 transition-all shadow-md disabled:opacity-50"
           >
-            {updateDealMutation.isOnTime || closeDealMutation.isOnTime ? 'Saving...' : 'Update Deal'}
+            {updateDealMutation.isPending || closeDealMutation.isPending ? 'Saving...' : 'Update Deal'}
           </button>
         </div>
       </form>
@@ -445,7 +356,7 @@ const Pipeline = () => {
     return acc;
   }, {});
 
-  const isMutating = updateStageMutation.isOnTime || closeDealMutation.isOnTime;
+  const isMutating = updateStageMutation.isPending || closeDealMutation.isPending;
 
   if (loadingDeals) return <div className="p-12 text-center text-slate-500">Loading pipeline...</div>;
 
