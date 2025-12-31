@@ -117,7 +117,7 @@ const NewDealModal = ({ isOpen, onClose }) => {
             className="w-full rounded-lg border-slate-300 border px-3 py-2 focus:ring-primary outline-none"
             value={formData.leadId}
             onChange={e => setFormData({ ...formData, leadId: e.target.value })}
-            disabled={loadingLeads || createDealMutation.isPending}
+            disabled={loadingLeads || createDealMutation.isOnTime}
           >
             <option value="">{loadingLeads ? 'Loading Leads...' : 'Select a Lead...'}</option>
             {leads.map(l => (
@@ -151,8 +151,8 @@ const NewDealModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className="flex justify-end pt-4 border-t border-slate-100">
-          <button type="submit" disabled={createDealMutation.isPending} className="px-4 py-2 bg-blue-900 text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
-            {createDealMutation.isPending ? 'Creating...' : 'Create Deal'}
+          <button type="submit" disabled={createDealMutation.isOnTime} className="px-4 py-2 bg-blue-900 text-white font-medium rounded-lg hover:bg-blue-600 shadow-md shadow-blue-500/20">
+            {createDealMutation.isOnTime ? 'Creating...' : 'Create Deal'}
           </button>
         </div>
       </form>
@@ -320,10 +320,10 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
           <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg text-sm transition-colors">Cancel</button>
           <button
             type="submit"
-            disabled={updateDealMutation.isPending || closeDealMutation.isPending}
+            disabled={updateDealMutation.isOnTime || closeDealMutation.isOnTime}
             className="px-6 py-2 bg-blue-900 text-white font-bold rounded-lg hover:bg-blue-600 transition-all shadow-md disabled:opacity-50"
           >
-            {updateDealMutation.isPending || closeDealMutation.isPending ? 'Saving...' : 'Update Deal'}
+            {updateDealMutation.isOnTime || closeDealMutation.isOnTime ? 'Saving...' : 'Update Deal'}
           </button>
         </div>
       </form>
@@ -337,6 +337,7 @@ const Pipeline = () => {
   const [isNewDealModalOpen, setIsNewDealModalOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'overdue', 'on_time'
 
   const handleEditDeal = (deal) => {
     setSelectedDeal(deal);
@@ -399,15 +400,36 @@ const Pipeline = () => {
   };
 
   const getStageTotal = (stage) => {
-    return deals.filter(d => d.stage === stage).reduce((acc, curr) => acc + (curr.value || 0), 0).toLocaleString();
+    return filteredDeals.filter(d => d.stage === stage).reduce((acc, curr) => acc + (curr.value || 0), 0).toLocaleString();
   };
 
+  // Filter deals based on active filter
+  const getFilteredDeals = () => {
+    const now = new Date();
+    const closedStages = ['WON', 'LOST', 'CANCELLED'];
+    
+    return deals.filter(deal => {
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'overdue') {
+        // Only show overdue deals that are NOT already closed
+        return !closedStages.includes(deal.stage) && deal.expectedCloseDate && new Date(deal.expectedCloseDate) < now;
+      }
+      if (activeFilter === 'on_time') {
+        // Only show on_time deals that are NOT already closed
+        return !closedStages.includes(deal.stage) && (!deal.expectedCloseDate || new Date(deal.expectedCloseDate) >= now);
+      }
+      return true;
+    });
+  };
+
+  const filteredDeals = getFilteredDeals();
+
   const dealsByStage = STAGES.reduce((acc, stage) => {
-    acc[stage] = deals.filter(d => d.stage === stage);
+    acc[stage] = filteredDeals.filter(d => d.stage === stage);
     return acc;
   }, {});
 
-  const isMutating = updateStageMutation.isPending || closeDealMutation.isPending;
+  const isMutating = updateStageMutation.isOnTime || closeDealMutation.isOnTime;
 
   if (loadingDeals) return <div className="p-12 text-center text-slate-500">Loading pipeline...</div>;
 
@@ -422,6 +444,40 @@ const Pipeline = () => {
         </div>
         <button onClick={() => setIsNewDealModalOpen(true)} className="flex items-center gap-2 bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium shadow-md transition-all">
           <Plus size={18} /> New Deal
+        </button>
+      </div>
+
+      {/* Filter Labels */}
+      <div className="flex gap-2 mb-4 px-2">
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+            activeFilter === 'all'
+              ? 'bg-slate-800 text-white shadow-md'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          All Deals ({deals.length})
+        </button>
+        <button
+          onClick={() => setActiveFilter('on_time')}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+            activeFilter === 'on_time'
+              ? 'bg-blue-700 text-white shadow-md'
+              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+          }`}
+        >
+          On Time ({deals.filter(d => !['WON', 'LOST', 'CANCELLED'].includes(d.stage) && (!d.expectedCloseDate || new Date(d.expectedCloseDate) >= new Date())).length})
+        </button>
+        <button
+          onClick={() => setActiveFilter('overdue')}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+            activeFilter === 'overdue'
+              ? 'bg-red-700 text-white shadow-md'
+              : 'bg-red-100 text-red-700 hover:bg-red-200'
+          }`}
+        >
+          Overdue ({deals.filter(d => !['WON', 'LOST', 'CANCELLED'].includes(d.stage) && d.expectedCloseDate && new Date(d.expectedCloseDate) < new Date()).length})
         </button>
       </div>
 
@@ -496,7 +552,13 @@ const Pipeline = () => {
                       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
                           <Calendar size={10} className={style.text} />
-                          {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('en-GB') : 'No date'}
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${
+                            !['WON', 'LOST', 'CANCELLED'].includes(deal.stage) && deal.expectedCloseDate && new Date(deal.expectedCloseDate) < new Date()
+                              ? 'bg-red-100 text-red-700 border border-red-200'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('en-GB') : 'No date'}
+                          </span>
                         </div>
 
                         {/* 4. Small stage indicator inside the card */}
