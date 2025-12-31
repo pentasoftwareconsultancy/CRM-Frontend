@@ -1,6 +1,6 @@
 // src/pages/Pipeline.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dealService, leadService, userService } from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -261,10 +261,21 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
 const Pipeline = () => {
   const queryClient = useQueryClient();
   const [draggedDealId, setDraggedDealId] = useState(null);
+  const [scrollInterval, setScrollInterval] = useState(null);
+  const kanbanContainerRef = React.useRef(null);
   const [isNewDealModalOpen, setIsNewDealModalOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'overdue', 'on_time'
+
+  // Cleanup scroll interval on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollInterval) {
+        clearInterval(scrollInterval);
+      }
+    };
+  }, [scrollInterval]);
 
   const handleEditDeal = (deal) => {
     setSelectedDeal(deal);
@@ -309,10 +320,66 @@ const Pipeline = () => {
     e.dataTransfer.setData('dealId', dealId);
   };
 
-  const handleDragOver = (e) => e.preventDefault();
+  const startAutoScroll = (direction) => {
+    if (scrollInterval) return; // Already scrolling
+
+    const scrollSpeed = 15; // pixels per frame
+    const interval = setInterval(() => {
+      if (kanbanContainerRef.current) {
+        const container = kanbanContainerRef.current;
+        const scrollLeft = container.scrollLeft;
+        const maxScrollLeft = container.scrollWidth - container.clientWidth;
+
+        if (direction === 'left' && scrollLeft > 0) {
+          container.scrollLeft = Math.max(0, scrollLeft - scrollSpeed);
+        } else if (direction === 'right' && scrollLeft < maxScrollLeft) {
+          container.scrollLeft = Math.min(maxScrollLeft, scrollLeft + scrollSpeed);
+        }
+      }
+    }, 16); // ~60fps
+
+    setScrollInterval(interval);
+  };
+
+  const stopAutoScroll = () => {
+    if (scrollInterval) {
+      clearInterval(scrollInterval);
+      setScrollInterval(null);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+
+    if (!kanbanContainerRef.current) return;
+
+    const container = kanbanContainerRef.current;
+    const rect = container.getBoundingClientRect();
+    const mouseX = e.clientX;
+    const threshold = 100; // pixels from edge to start scrolling
+
+    // Check if mouse is near left edge
+    if (mouseX - rect.left < threshold) {
+      startAutoScroll('left');
+    }
+    // Check if mouse is near right edge
+    else if (rect.right - mouseX < threshold) {
+      startAutoScroll('right');
+    }
+    // Stop scrolling if mouse is in the middle
+    else {
+      stopAutoScroll();
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedDealId(null);
+    stopAutoScroll();
+  };
 
   const handleDrop = (e, newStage) => {
     e.preventDefault();
+    stopAutoScroll(); // Stop any ongoing auto-scroll
     if (!draggedDealId) return;
     const deal = deals.find(d => d.id === draggedDealId);
     if (!deal || deal.stage === newStage) return;
@@ -408,7 +475,7 @@ const Pipeline = () => {
         </button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-4 h-full kanban-scroll">
+      <div className="flex gap-2 overflow-x-auto pb-4 h-full kanban-scroll" ref={kanbanContainerRef}>
         {STAGES.map(stage => {
           const style = STAGE_STYLES[stage];
           return (
@@ -443,7 +510,7 @@ const Pipeline = () => {
                         }`}
                       draggable
                       onDragStart={(e) => handleDragStart(e, deal.id)}
-                      onDragEnd={() => setDraggedDealId(null)}
+                      onDragEnd={handleDragEnd}
                     >
                       {/* 1. Side Accent Bar */}
                       <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${style.accent}`} />
