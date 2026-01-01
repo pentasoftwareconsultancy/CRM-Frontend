@@ -54,16 +54,16 @@ const ImportModal = ({ isOpen, onClose }) => {
         <div className="border-2 border-dashed border-slate-300 p-6 text-center rounded-lg bg-slate-50">
           <input
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx,.xls"
             onChange={handleFileUpload}
             className="hidden"
             id="file-upload"
           />
           <label htmlFor="file-upload" className="cursor-pointer text-primary font-medium hover:text-blue-600">
             <Upload size={20} className="mx-auto mb-2 text-slate-400" />
-            {file ? `File Selected: ${file.name}` : "Click to select CSV file"}
+            {file ? `File Selected: ${file.name}` : "Click to select CSV or Excel file"}
           </label>
-          <p className="text-sm text-slate-500 mt-2">Max size 5MB. Must contain 'name', 'email', 'company' columns.</p>
+          <p className="text-sm text-slate-500 mt-2">Max size 5MB. Must contain 'name', 'email', 'company' columns. Supports CSV and Excel formats (.csv, .xlsx, .xls).</p>
         </div>
 
         <div className="flex justify-end pt-4 border-t border-slate-100">
@@ -269,6 +269,28 @@ const Leads = () => {
         </div>
         {/* Button Group: Stacks on small screens */}
         <div className="flex gap-3 flex-wrap justify-end">
+          <button
+            onClick={() => {
+              const csvContent = `name,email,phone,company,source,status,budget
+"John Doe","john.doe@example.com","+1-555-0123","Acme Corp","website","new",50000
+"Jane Smith","jane.smith@company.com","+1-555-0456","Tech Solutions Inc","referral","contacted",75000`;
+
+              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+              const url = window.URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = 'lead_import_sample.csv';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
+            disabled={isLoading}
+          >
+            <Download size={18} />
+            <span className="hidden sm:inline">Sample CSV</span>
+          </button>
           <button
             onClick={() => setIsImportModalOpen(true)}
             className="flex items-center gap-2 border border-slate-300 bg-white text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors"
