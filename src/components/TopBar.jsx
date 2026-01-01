@@ -42,10 +42,15 @@ const TopBar = ({ user, onMenuClick }) => {
       if (topUnread && topUnread._id !== lastNotifiedId.current) {
         // Only notify if window is not focused or just as a redundant alert
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('NexusCRM Update', {
+          const notification = new Notification('NexusCRM Update', {
             body: topUnread.message,
             icon: '/favicon.ico'
           });
+
+          notification.onclick = () => {
+            window.focus();
+            navigate('/notifications');
+          };
         }
         lastNotifiedId.current = topUnread._id;
       }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dealService, leadService, userService } from '../services/api';
+import { dealService, leadService, userService, activityService } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Plus, GripVertical, Calendar, User as UserIcon, Building, AlertCircle, Circle, ExternalLink, Shield } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -97,8 +97,10 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
     currency: 'INR',
     stage: '',
     expectedCloseDate: '',
-    closedReason: ''
+    closedReason: '',
+    description: ''
   });
+  const [noteContent, setNoteContent] = useState('');
 
   React.useEffect(() => {
     if (deal) {
@@ -109,7 +111,8 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
         currency: deal.currency || 'INR',
         stage: deal.stage || '',
         expectedCloseDate: deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toISOString().substring(0, 10) : '',
-        closedReason: deal.closedReason || ''
+        closedReason: deal.closedReason || '',
+        description: deal.description || ''
       });
     }
   }, [deal]);
@@ -118,6 +121,20 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
     queryKey: ['users'],
     queryFn: () => userService.getUsers().then(res => res.data),
     enabled: isOpen
+  });
+
+  const { data: notes = [], isLoading: loadingNotes } = useQuery({
+    queryKey: ['dealNotes', deal?.id],
+    queryFn: () => activityService.getDealNotes(deal.id),
+    enabled: !!deal?.id && isOpen
+  });
+
+  const addNoteMutation = useMutation({
+    mutationFn: (content) => activityService.addDealNote(deal.id, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['dealNotes', deal?.id]);
+      setNoteContent('');
+    }
   });
 
   const updateDealMutation = useMutation({
@@ -156,6 +173,12 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
       // Standard update for other fields or non-terminal stage changes
       updateDealMutation.mutate(formData);
     }
+  };
+
+  const handleAddNote = (e) => {
+    e.preventDefault();
+    if (!noteContent.trim()) return;
+    addNoteMutation.mutate(noteContent);
   };
 
   if (!deal) return null;
@@ -230,6 +253,16 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
           </div>
         </div>
 
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+          <textarea
+            className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm h-24 resize-none"
+            placeholder="Add details about this deal..."
+            value={formData.description}
+            onChange={e => setFormData({ ...formData, description: e.target.value })}
+          />
+        </div>
+
         {isTerminal && (
           <div className="animate-in fade-in slide-in-from-top-2">
             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Reason for {formData.stage.replace('_', ' ')} *</label>
@@ -254,6 +287,46 @@ const EditDealModal = ({ isOpen, onClose, deal }) => {
           </button>
         </div>
       </form>
+
+      <div className="flex flex-col border-l border-slate-200 pl-6 h-full">
+        <h3 className="text-xs font-bold text-slate-500 uppercase mb-4">Deal Notes</h3>
+
+        <form onSubmit={handleAddNote} className="mb-6">
+          <textarea
+            className="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm h-20 resize-none mb-2"
+            placeholder="Add a progress update..."
+            value={noteContent}
+            onChange={e => setNoteContent(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={addNoteMutation.isPending || !noteContent.trim()}
+            className="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+          >
+            {addNoteMutation.isPending ? 'Adding...' : 'Add Note'}
+          </button>
+        </form>
+
+        <div className="flex-1 overflow-y-auto space-y-4 max-h-[300px] pr-2">
+          {loadingNotes ? (
+            <div className="text-center text-xs text-slate-400 py-4">Loading notes...</div>
+          ) : notes.length === 0 ? (
+            <div className="text-center text-xs text-slate-400 py-8 border-2 border-dashed border-slate-100 rounded-xl font-medium">
+              No notes yet. Add one above.
+            </div>
+          ) : (
+            notes.map(note => (
+              <div key={note.id} className="bg-slate-50 p-3 rounded-lg border border-slate-200 relative group">
+                <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                <div className="mt-2 flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">{note.user?.name}</span>
+                  <span className="text-[10px] text-slate-400">{new Date(note.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </Modal>
   );
 };
@@ -401,7 +474,7 @@ const Pipeline = () => {
   const getFilteredDeals = () => {
     const now = new Date();
     const closedStages = ['WON', 'LOST', 'CANCELLED'];
-    
+
     return deals.filter(deal => {
       if (activeFilter === 'all') return true;
       if (activeFilter === 'overdue') {
@@ -445,31 +518,28 @@ const Pipeline = () => {
       <div className="flex gap-2 mb-4 px-2">
         <button
           onClick={() => setActiveFilter('all')}
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            activeFilter === 'all'
-              ? 'bg-slate-800 text-white shadow-md'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeFilter === 'all'
+            ? 'bg-slate-800 text-white shadow-md'
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
         >
           All Deals ({deals.length})
         </button>
         <button
           onClick={() => setActiveFilter('on_time')}
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            activeFilter === 'on_time'
-              ? 'bg-blue-700 text-white shadow-md'
-              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-          }`}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeFilter === 'on_time'
+            ? 'bg-blue-700 text-white shadow-md'
+            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            }`}
         >
           On Time ({deals.filter(d => !['WON', 'LOST', 'CANCELLED'].includes(d.stage) && (!d.expectedCloseDate || new Date(d.expectedCloseDate) >= new Date())).length})
         </button>
         <button
           onClick={() => setActiveFilter('overdue')}
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            activeFilter === 'overdue'
-              ? 'bg-red-700 text-white shadow-md'
-              : 'bg-red-100 text-red-700 hover:bg-red-200'
-          }`}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeFilter === 'overdue'
+            ? 'bg-red-700 text-white shadow-md'
+            : 'bg-red-100 text-red-700 hover:bg-red-200'
+            }`}
         >
           Overdue ({deals.filter(d => !['WON', 'LOST', 'CANCELLED'].includes(d.stage) && d.expectedCloseDate && new Date(d.expectedCloseDate) < new Date()).length})
         </button>
@@ -546,11 +616,10 @@ const Pipeline = () => {
                       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
                           <Calendar size={10} className={style.text} />
-                          <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${
-                            !['WON', 'LOST', 'CANCELLED'].includes(deal.stage) && deal.expectedCloseDate && new Date(deal.expectedCloseDate) < new Date()
-                              ? 'bg-red-100 text-red-700 border border-red-200'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${!['WON', 'LOST', 'CANCELLED'].includes(deal.stage) && deal.expectedCloseDate && new Date(deal.expectedCloseDate) < new Date()
+                            ? 'bg-red-100 text-red-700 border border-red-200'
+                            : 'bg-slate-100 text-slate-600'
+                            }`}>
                             {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('en-GB') : 'No date'}
                           </span>
                         </div>

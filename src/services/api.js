@@ -195,6 +195,15 @@ export const activityService = {
     const res = await apiService.post(`/leads/${leadId}/notes`, { content });
     return res.data;
   },
+  getDealNotes: async (dealId) => {
+    const res = await apiService.get(`/deals/${dealId}/notes`);
+    const list = normalizeList(res).map(n => ({ ...n, id: n._id }));
+    return list;
+  },
+  addDealNote: async (dealId, content) => {
+    const res = await apiService.post(`/deals/${dealId}/notes`, { content });
+    return res.data;
+  },
   getLeadActivities: async (leadId) => {
     const res = await apiService.get(`/leads/${leadId}/activities`);
     return res.data;
