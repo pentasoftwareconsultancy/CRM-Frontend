@@ -11,7 +11,7 @@ const NewDealModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     leadId: '',
     title: '',
-    value: 0,
+    value: '',
     currency: 'INR',
     expectedCloseDate: new Date().toISOString().substring(0, 10),
   });
@@ -38,7 +38,7 @@ const NewDealModal = ({ isOpen, onClose }) => {
       queryClient.invalidateQueries(['deals']);
       queryClient.invalidateQueries(['leads']);
       onClose();
-      setFormData({ leadId: '', title: '', value: 0, currency: 'INR', expectedCloseDate: new Date().toISOString().substring(0, 10) });
+      setFormData({ leadId: '', title: '', value: '', currency: 'INR', expectedCloseDate: new Date().toISOString().substring(0, 10) });
       setLeadSearch('');
       setSelectedLead(null);
       setShowLeadDropdown(false);
@@ -78,7 +78,8 @@ const NewDealModal = ({ isOpen, onClose }) => {
       alert('Please select a lead or customer.');
       return;
     }
-    if (formData.value <= 0) {
+    const value = Number(formData.value) || 0;
+    if (value <= 0) {
       alert('Deal value must be greater than zero.');
       return;
     }
@@ -138,7 +139,7 @@ const NewDealModal = ({ isOpen, onClose }) => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Value *</label>
-            <input required type="number" min="0" className="w-full rounded-lg border-slate-300 border px-3 py-2" value={formData.value} onChange={e => setFormData({ ...formData, value: Number(e.target.value) })} />
+            <input required type="number" min="0" className="w-full rounded-lg border-slate-300 border px-3 py-2" value={formData.value} onChange={e => setFormData({ ...formData, value: e.target.value })} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Expected Close Date</label>
