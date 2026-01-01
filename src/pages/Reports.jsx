@@ -68,7 +68,7 @@ const Reports = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Reports & Analytics</h2>
-          <p className="text-slate-500 mt-1">Deep dive into your sales metrics and team performance.</p>
+          <p className="text-slate-500 mt-1">Comprehensive business intelligence dashboard providing insights into sales pipeline health, individual team member performance, and lead conversion effectiveness to drive data-driven growth decisions.</p>
         </div>
         <button
           onClick={handleExport}
@@ -111,7 +111,8 @@ const Reports = () => {
         {activeTab === 'overview' && data.pipelineData && (
           <>
             <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-2">
-              <h3 className="text-lg font-bold text-slate-800 mb-6">Key Lead Metrics</h3>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Key Lead Metrics</h3>
+              <p className="text-sm text-slate-600 mb-6">Comprehensive view of your sales pipeline showing total leads in the system, new leads acquired in the current period, and breakdown of deal outcomes (won, lost, cancelled deals) to monitor pipeline health and conversion trends over time.</p>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data.pipelineData}>
@@ -126,7 +127,8 @@ const Reports = () => {
             </div>
 
             <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800 mb-6">Deal Distribution</h3>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Deal Distribution</h3>
+              <p className="text-sm text-slate-600 mb-6">Visual breakdown showing the proportion of deals that were won, lost, or cancelled. This helps identify conversion patterns and potential bottlenecks in your sales process.</p>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -168,7 +170,8 @@ const Reports = () => {
         {/* Team Performance Content (FR-30, 31) */}
         {activeTab === 'team' && data.teamPerformance && (
           <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-2">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Sales Rep Performance by Volume</h3>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Sales Rep Performance by Volume</h3>
+            <p className="text-sm text-slate-600 mb-6">Track how many leads each team member has been assigned and how many deals they have successfully closed. This helps identify top performers, workload distribution, and opportunities for coaching or reassigning leads.</p>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.teamPerformance} layout="vertical" margin={{ left: 20 }}>
@@ -188,7 +191,8 @@ const Reports = () => {
         {/* Sources Content (FR-32) */}
         {activeTab === 'sources' && data.conversionData && (
           <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-2">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Overall Conversion Rate</h3>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Overall Conversion Rate</h3>
+            <p className="text-sm text-slate-600 mb-6">Percentage of leads that successfully convert to closed deals. A higher rate indicates more efficient lead qualification and sales processes, helping you measure and improve your overall sales effectiveness.</p>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.conversionData}>
