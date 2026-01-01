@@ -493,8 +493,8 @@ const Leads = () => {
                       <td className="px-3 py-3 text-xs text-slate-500">
                         {new Date(lead.updatedAt).toLocaleDateString()}
                       </td>
-                      <td className="px-3 py-3 text-right">
-                        <div className="flex justify-end gap-2 text-right">
+                      <td className="px-3 py-3">
+                        <div className="flex gap-2">
                           <Link
                             to={`/leads/${lead.id}`}
                             className="p-1.5 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
