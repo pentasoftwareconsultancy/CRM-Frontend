@@ -31,6 +31,7 @@ const Notifications = () => {
   const getIcon = (type) => {
     switch (type) {
       case 'followup_due': return <Calendar className="text-amber-500" size={20} />;
+      case 'followup_scheduled': return <Calendar className="text-blue-500" size={20} />;
       case 'lead_assigned': return <UserPlus className="text-blue-500" size={20} />;
       case 'deal_closed': return <CheckCircle className="text-emerald-500" size={20} />;
       default: return <Info className="text-slate-400" size={20} />;
