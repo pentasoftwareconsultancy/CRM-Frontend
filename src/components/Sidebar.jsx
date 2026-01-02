@@ -12,7 +12,7 @@ const Sidebar = ({ onLogout, userRole, isCollapsed, setIsCollapsed, isMobileOpen
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard, color: 'text-sky-400', activeBg: 'bg-sky-500/10', border: 'border-sky-500/20' },
     { name: 'Leads', to: '/leads', icon: Users, color: 'text-amber-400', activeBg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-    { name: 'Pipeline', to: '/pipeline', icon: Trello, color: 'text-indigo-400', activeBg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+    { name: 'Deals', to: '/deals', icon: Trello, color: 'text-indigo-400', activeBg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
     { name: 'Follow Ups', to: '/followups', icon: CalendarClock, color: 'text-rose-400', activeBg: 'bg-rose-500/10', border: 'border-rose-500/20' },
     { name: 'Customers', to: '/customers', icon: IndianRupeeIcon, color: 'text-emerald-400', activeBg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
     { name: 'Reports', to: '/reports', icon: BarChart3, color: 'text-purple-400', activeBg: 'bg-purple-500/10', border: 'border-purple-500/20' },

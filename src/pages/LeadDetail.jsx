@@ -246,7 +246,7 @@ const LeadDetail = () => {
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
                 <Briefcase size={20} className="text-primary" /> Active Deals
               </h3>
-              <button onClick={() => navigate('/pipeline')} className="text-xs font-semibold text-primary hover:bg-blue-50 px-2 py-1 rounded-md transition-colors">+ New Deal</button>
+              <button onClick={() => navigate('/deals')} className="text-xs font-semibold text-primary hover:bg-blue-50 px-2 py-1 rounded-md transition-colors">+ New Deal</button>
             </div>
             {deals?.length === 0 ? (
               <p className="text-slate-400 text-sm italic py-4 border-2 border-dashed border-slate-50 text-center rounded-lg">No deals associated with this lead.</p>

@@ -76,7 +76,7 @@ const AppLayout = () => {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/leads" element={<Leads />} />
             <Route path="/leads/:id" element={<LeadDetail />} />
-            <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/deals" element={<Pipeline />} />
             <Route path="/followups" element={<FollowUps />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/customers" element={<Customers />} />
