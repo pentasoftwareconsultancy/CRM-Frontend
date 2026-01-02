@@ -37,7 +37,7 @@ const FollowUps = () => {
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ['allLeads'],
     queryFn: () => leadService.getLeads({ limit: 100 }).then(data => data.data),
-    select: (data) => data.filter(l => l.status !== 'lost' && l.status !== 'converted')
+    select: (data) => data
   });
 
   const { data: users = [] } = useQuery({
